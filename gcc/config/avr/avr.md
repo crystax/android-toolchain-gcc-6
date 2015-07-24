@@ -1,6 +1,6 @@
 ;;   Machine description for GNU compiler,
 ;;   for ATMEL AVR micro controllers.
-;;   Copyright (C) 1998-2014 Free Software Foundation, Inc.
+;;   Copyright (C) 1998-2015 Free Software Foundation, Inc.
 ;;   Contributed by Denis Chertykov (chertykov@gmail.com)
 
 ;; This file is part of GCC.
@@ -24,6 +24,10 @@
 ;;  B  Add 1 to REG number, MEM address or CONST_INT.
 ;;  C  Add 2.
 ;;  D  Add 3.
+;;  E  reg number in XEXP(x, 0).
+;;  F  Add 1 to reg number.
+;;  I  reg number in XEXP(XEXP(x, 0), 0).
+;;  J  Add 1 to reg number.
 ;;  j  Branch condition.
 ;;  k  Reverse branch condition.
 ;;..m..Constant Direct Data memory address.
@@ -58,6 +62,11 @@
    (TMP_REGNO   0)      ; temporary register r0
    (ZERO_REGNO  1)      ; zero register r1
    ])
+
+(define_constants
+  [(TMP_REGNO_TINY  16) ; r16 is temp register for AVR_TINY
+   (ZERO_REGNO_TINY 17) ; r17 is zero register for AVR_TINY
+  ])
 
 (define_c_enum "unspec"
   [UNSPEC_STRLEN
@@ -138,7 +147,7 @@
 ;; Otherwise do special processing depending on the attribute.
 
 (define_attr "adjust_len"
-  "out_bitop, plus, addto_sp,
+  "out_bitop, plus, addto_sp, sext,
    tsthi, tstpsi, tstsi, compare, compare64, call,
    mov8, mov16, mov24, mov32, reload_in16, reload_in24, reload_in32,
    ufract, sfract, round,
@@ -159,9 +168,10 @@
 ;; lpm  : ISA has no LPMX                lpmx  : ISA has LPMX
 ;; elpm : ISA has ELPM but no ELPMX      elpmx : ISA has ELPMX
 ;; no_xmega: non-XMEGA core              xmega : XMEGA core
+;; no_tiny:  non-TINY core               tiny  : TINY core
 
 (define_attr "isa"
-  "mov,movw, rjmp,jmp, ijmp,eijmp, lpm,lpmx, elpm,elpmx, no_xmega,xmega,
+  "mov,movw, rjmp,jmp, ijmp,eijmp, lpm,lpmx, elpm,elpmx, no_xmega,xmega, no_tiny,tiny,
    standard"
   (const_string "standard"))
 
@@ -213,9 +223,18 @@
               (match_test "AVR_XMEGA"))
          (const_int 1)
 
+         (and (eq_attr "isa" "tiny")
+              (match_test "AVR_TINY"))
+         (const_int 1)
+
          (and (eq_attr "isa" "no_xmega")
               (match_test "!AVR_XMEGA"))
          (const_int 1)
+
+         (and (eq_attr "isa" "no_tiny")
+              (match_test "!AVR_TINY"))
+         (const_int 1)
+
          ] (const_int 0)))
 
 
@@ -509,7 +528,8 @@
        ; in not able to allocate segment registers and reload the resulting
        ; expressions.  Notice that no address register can hold a PSImode.  */
 
-    rtx insn, addr = XEXP (operands[1], 0);
+    rtx_insn *insn;
+    rtx addr = XEXP (operands[1], 0);
     rtx hi8 = gen_reg_rtx (QImode);
     rtx reg_z = gen_rtx_REG (HImode, REG_Z);
 
@@ -544,7 +564,7 @@
     rtx reg_z = gen_rtx_REG (HImode, REG_Z);
     rtx addr_hi8 = simplify_gen_subreg (QImode, addr, PSImode, 2);
     addr_space_t as = MEM_ADDR_SPACE (operands[1]);
-    rtx insn;
+    rtx_insn *insn;
 
     /* Split the address to R21:Z */
     emit_move_insn (reg_z, simplify_gen_subreg (HImode, addr, PSImode, 0));
@@ -616,7 +636,7 @@
   ""
   {
     rtx dest = operands[0];
-    rtx src  = operands[1];
+    rtx src  = avr_eval_addr_attrib (operands[1]);
 
     if (avr_mem_flash_p (dest))
       DONE;
@@ -668,7 +688,7 @@
   [(set (match_operand:ALL1 0 "nonimmediate_operand" "=r    ,d    ,Qm   ,r ,q,r,*r")
         (match_operand:ALL1 1 "nox_general_operand"   "r Y00,n Ynn,r Y00,Qm,r,q,i"))]
   "register_operand (operands[0], <MODE>mode)
-   || reg_or_0_operand (operands[1], <MODE>mode)"
+    || reg_or_0_operand (operands[1], <MODE>mode)"
   {
     return output_movqi (insn, operands, NULL);
   }
@@ -1041,7 +1061,7 @@
   ""
   {
     rtx addr0;
-    enum machine_mode mode;
+    machine_mode mode;
 
     /* If value to set is not zero, use the library routine.  */
     if (operands[2] != const0_rtx)
@@ -2198,10 +2218,10 @@
         DONE;
       }
 
-    /* For small constants we can do better by extending them on the fly.
-       The constant can be loaded in one instruction and the widening
-       multiplication is shorter.  First try the unsigned variant because it
-       allows constraint "d" instead of "a" for the signed version.  */
+    /* ; For small constants we can do better by extending them on the fly.
+       ; The constant can be loaded in one instruction and the widening
+       ; multiplication is shorter.  First try the unsigned variant because it
+       ; allows constraint "d" instead of "a" for the signed version.  */
 
     if (s9_operand (operands[2], HImode))
       {
@@ -3312,7 +3332,7 @@
 	swap %0\;lsl %0\;adc %0,__zero_reg__
 	swap %0\;lsl %0\;adc %0,__zero_reg__\;lsl %0\;adc %0,__zero_reg__
 	bst %0,0\;ror %0\;bld %0,7
-	"
+	" ; empty
   [(set_attr "length" "2,4,4,1,3,5,3,0")
    (set_attr "cc" "set_n,set_n,clobber,none,set_n,set_n,clobber,none")])
 
@@ -4232,62 +4252,66 @@
   [(set (match_operand:HI 0 "register_operand" "=r,r")
         (sign_extend:HI (match_operand:QI 1 "combine_pseudo_register_operand" "0,*r")))]
   ""
-  "@
-	clr %B0\;sbrc %0,7\;com %B0
-	mov %A0,%A1\;clr %B0\;sbrc %A0,7\;com %B0"
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
   [(set_attr "length" "3,4")
-   (set_attr "cc" "set_n,set_n")])
+   (set_attr "adjust_len" "sext")
+   (set_attr "cc" "set_n")])
 
 (define_insn "extendqipsi2"
   [(set (match_operand:PSI 0 "register_operand" "=r,r")
         (sign_extend:PSI (match_operand:QI 1 "combine_pseudo_register_operand" "0,*r")))]
   ""
-  "@
-	clr %B0\;sbrc %A0,7\;com %B0\;mov %C0,%B0
-	mov %A0,%A1\;clr %B0\;sbrc %A0,7\;com %B0\;mov %C0,%B0"
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
   [(set_attr "length" "4,5")
-   (set_attr "cc" "set_n,set_n")])
+   (set_attr "adjust_len" "sext")
+   (set_attr "cc" "set_n")])
 
 (define_insn "extendqisi2"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
         (sign_extend:SI (match_operand:QI 1 "combine_pseudo_register_operand" "0,*r")))]
   ""
-  "@
-	clr %B0\;sbrc %A0,7\;com %B0\;mov %C0,%B0\;mov %D0,%B0
-	mov %A0,%A1\;clr %B0\;sbrc %A0,7\;com %B0\;mov %C0,%B0\;mov %D0,%B0"
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
   [(set_attr "length" "5,6")
-   (set_attr "cc" "set_n,set_n")])
+   (set_attr "adjust_len" "sext")
+   (set_attr "cc" "set_n")])
 
 (define_insn "extendhipsi2"
-  [(set (match_operand:PSI 0 "register_operand"                               "=r,r ,r")
-        (sign_extend:PSI (match_operand:HI 1 "combine_pseudo_register_operand" "0,*r,*r")))]
+  [(set (match_operand:PSI 0 "register_operand"                               "=r,r")
+        (sign_extend:PSI (match_operand:HI 1 "combine_pseudo_register_operand" "0,*r")))]
   ""
-  "@
-	clr %C0\;sbrc %B0,7\;com %C0
-	mov %A0,%A1\;mov %B0,%B1\;clr %C0\;sbrc %B0,7\;com %C0
-	movw %A0,%A1\;clr %C0\;sbrc %B0,7\;com %C0"
-  [(set_attr "length" "3,5,4")
-   (set_attr "isa" "*,mov,movw")
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
+  [(set_attr "length" "3,5")
+   (set_attr "adjust_len" "sext")
    (set_attr "cc" "set_n")])
 
 (define_insn "extendhisi2"
-  [(set (match_operand:SI 0 "register_operand"                               "=r,r ,r")
-        (sign_extend:SI (match_operand:HI 1 "combine_pseudo_register_operand" "0,*r,*r")))]
+  [(set (match_operand:SI 0 "register_operand"                               "=r,r")
+        (sign_extend:SI (match_operand:HI 1 "combine_pseudo_register_operand" "0,*r")))]
   ""
-  "@
-	clr %C0\;sbrc %B0,7\;com %C0\;mov %D0,%C0
-	mov %A0,%A1\;mov %B0,%B1\;clr %C0\;sbrc %B0,7\;com %C0\;mov %D0,%C0
-	movw %A0,%A1\;clr %C0\;sbrc %B0,7\;com %C0\;mov %D0,%C0"
-  [(set_attr "length" "4,6,5")
-   (set_attr "isa" "*,mov,movw")
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
+  [(set_attr "length" "4,6")
+   (set_attr "adjust_len" "sext")
    (set_attr "cc" "set_n")])
 
 (define_insn "extendpsisi2"
   [(set (match_operand:SI 0 "register_operand"                                "=r")
         (sign_extend:SI (match_operand:PSI 1 "combine_pseudo_register_operand" "0")))]
   ""
-  "clr %D0\;sbrc %C0,7\;com %D0"
+  {
+    return avr_out_sign_extend (insn, operands, NULL);
+  }
   [(set_attr "length" "3")
+   (set_attr "adjust_len" "sext")
    (set_attr "cc" "set_n")])
 
 ;; xx<---x xx<---x xx<---x xx<---x xx<---x xx<---x xx<---x xx<---x xx<---x
@@ -5116,7 +5140,7 @@
       }
     else
       {
-        operands[7] = gen_rtx_PLUS (HImode, operands[6], 
+        operands[7] = gen_rtx_PLUS (HImode, operands[6],
                                     gen_rtx_LABEL_REF (VOIDmode, operands[3]));
         operands[8] = const0_rtx;
         operands[10] = operands[6];
@@ -5137,7 +5161,7 @@
 ;; Clear/set/test a single bit in I/O address space.
 
 (define_insn "*cbi"
-  [(set (mem:QI (match_operand 0 "low_io_address_operand" "n"))
+  [(set (mem:QI (match_operand 0 "low_io_address_operand" "i"))
         (and:QI (mem:QI (match_dup 0))
                 (match_operand:QI 1 "single_zero_operand" "n")))]
   ""
@@ -5149,7 +5173,7 @@
    (set_attr "cc" "none")])
 
 (define_insn "*sbi"
-  [(set (mem:QI (match_operand 0 "low_io_address_operand" "n"))
+  [(set (mem:QI (match_operand 0 "low_io_address_operand" "i"))
         (ior:QI (mem:QI (match_dup 0))
                 (match_operand:QI 1 "single_one_operand" "n")))]
   ""
@@ -5166,7 +5190,7 @@
         (if_then_else
          (match_operator 0 "eqne_operator"
                          [(zero_extract:QIHI
-                           (mem:QI (match_operand 1 "low_io_address_operand" "n"))
+                           (mem:QI (match_operand 1 "low_io_address_operand" "i"))
                            (const_int 1)
                            (match_operand 2 "const_int_operand" "n"))
                           (const_int 0)])
@@ -5190,7 +5214,7 @@
   [(set (pc)
         (if_then_else
          (match_operator 0 "gelt_operator"
-                         [(mem:QI (match_operand 1 "low_io_address_operand" "n"))
+                         [(mem:QI (match_operand 1 "low_io_address_operand" "i"))
                           (const_int 0)])
          (label_ref (match_operand 2 "" ""))
          (pc)))]
@@ -5505,7 +5529,7 @@
                       (label_ref (match_operand 0 "" ""))
                       (pc)))]
   "!AVR_HAVE_JMP_CALL
-   || !(avr_current_device->dev_attribute & AVR_ERRATA_SKIP)"
+   || !TARGET_SKIP_BUG"
   {
     if (operands[2] == CONST0_RTX (<MODE>mode))
       operands[2] = zero_reg_rtx;
@@ -5668,24 +5692,24 @@
    (clobber (match_scratch:QI 2 "=&d"))]
   ""
   "ldi %2,lo8(%0)
-	1: dec %2
+1:	dec %2
 	brne 1b"
   [(set_attr "length" "3")
    (set_attr "cc" "clobber")])
 
 (define_insn "delay_cycles_2"
-  [(unspec_volatile [(match_operand:HI 0 "const_int_operand" "n")
+  [(unspec_volatile [(match_operand:HI 0 "const_int_operand" "n,n")
                      (const_int 2)]
                     UNSPECV_DELAY_CYCLES)
    (set (match_operand:BLK 1 "" "")
 	(unspec_volatile:BLK [(match_dup 1)] UNSPECV_MEMORY_BARRIER))
-   (clobber (match_scratch:HI 2 "=&w"))]
+   (clobber (match_scratch:HI 2 "=&w,&d"))]
   ""
-  "ldi %A2,lo8(%0)
-	ldi %B2,hi8(%0)
-	1: sbiw %A2,1
-	brne 1b"
-  [(set_attr "length" "4")
+  "@
+	ldi %A2,lo8(%0)\;ldi %B2,hi8(%0)\n1:	sbiw %A2,1\;brne 1b
+	ldi %A2,lo8(%0)\;ldi %B2,hi8(%0)\n1:	subi %A2,1\;sbci %B2,0\;brne 1b"
+  [(set_attr "length" "4,5")
+   (set_attr "isa" "no_tiny,tiny")
    (set_attr "cc" "clobber")])
 
 (define_insn "delay_cycles_3"
@@ -5701,7 +5725,7 @@
   "ldi %2,lo8(%0)
 	ldi %3,hi8(%0)
 	ldi %4,hlo8(%0)
-	1: subi %2,1
+1:	subi %2,1
 	sbci %3,0
 	sbci %4,0
 	brne 1b"
@@ -5723,7 +5747,7 @@
 	ldi %3,hi8(%0)
 	ldi %4,hlo8(%0)
 	ldi %5,hhi8(%0)
-	1: subi %2,1
+1:	subi %2,1
 	sbci %3,0
 	sbci %4,0
 	sbci %5,0
@@ -6366,7 +6390,7 @@
 ;; in contrast to a IN/BST/BLD/OUT sequence we need less registers and the
 ;; operation on I/O is atomic.
 (define_insn "*insv.io"
-  [(set (zero_extract:QI (mem:QI (match_operand 0 "low_io_address_operand" "n,n,n"))
+  [(set (zero_extract:QI (mem:QI (match_operand 0 "low_io_address_operand" "i,i,i"))
                          (const_int 1)
                          (match_operand:QI 1 "const_0_to_7_operand"        "n,n,n"))
         (match_operand:QI 2 "nonmemory_operand"                            "L,P,r"))]
@@ -6379,7 +6403,7 @@
    (set_attr "cc" "none")])
 
 (define_insn "*insv.not.io"
-  [(set (zero_extract:QI (mem:QI (match_operand 0 "low_io_address_operand" "n"))
+  [(set (zero_extract:QI (mem:QI (match_operand 0 "low_io_address_operand" "i"))
                          (const_int 1)
                          (match_operand:QI 1 "const_0_to_7_operand"        "n"))
         (not:QI (match_operand:QI 2 "register_operand"                     "r")))]

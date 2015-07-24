@@ -443,7 +443,7 @@ code.
 machine code (with -fPIC), allowing it to be used within shared libraries,
 but yielding a slightly slower compiler.
 </p>
-<p>Currently this option is only of use to people developing GCC itself.
+<p>This option is required when building the libgccjit.so library.
 </p>
 <p>Contrast with <samp>--enable-shared</samp>, which affects <em>target</em>
 libraries.
@@ -799,6 +799,38 @@ enables <samp>-msse2</samp> or &lsquo;<samp>avx</samp>&rsquo; which enables <sam
 This option is only supported on i386 and x86-64 targets.
 </p>
 </dd>
+<dt><code>--with-fp-32=<var>mode</var></code></dt>
+<dd><p>On MIPS targets, set the default value for the <samp>-mfp</samp> option when using
+the o32 ABI.  The possibilities for <var>mode</var> are:
+</p><dl compact="compact">
+<dt><code>32</code></dt>
+<dd><p>Use the o32 FP32 ABI extension, as with the <samp>-mfp32</samp> command-line
+option.
+</p></dd>
+<dt><code>xx</code></dt>
+<dd><p>Use the o32 FPXX ABI extension, as with the <samp>-mfpxx</samp> command-line
+option.
+</p></dd>
+<dt><code>64</code></dt>
+<dd><p>Use the o32 FP64 ABI extension, as with the <samp>-mfp64</samp> command-line
+option.
+</p></dd>
+</dl>
+<p>In the absence of this configuration option the default is to use the o32
+FP32 ABI extension.
+</p>
+</dd>
+<dt><code>--with-odd-spreg-32</code></dt>
+<dd><p>On MIPS targets, set the <samp>-modd-spreg</samp> option by default when using
+the o32 ABI.
+</p>
+</dd>
+<dt><code>--without-odd-spreg-32</code></dt>
+<dd><p>On MIPS targets, set the <samp>-mno-odd-spreg</samp> option by default when using
+the o32 ABI.  This is normally used in conjunction with
+<samp>--with-fp-32=64</samp> in order to target the o32 FP64A ABI extension.
+</p>
+</dd>
 <dt><code>--with-nan=<var>encoding</var></code></dt>
 <dd><p>On MIPS targets, set the default encoding convention to use for the
 special not-a-number (NaN) IEEE 754 floating-point data.  The
@@ -963,6 +995,112 @@ parallel.  This is currently supported by &lsquo;<samp>libgfortran</samp>&rsquo;
 &lsquo;<samp>libjava</samp>&rsquo;, &lsquo;<samp>libstdc++</samp>&rsquo;, and &lsquo;<samp>libobjc</samp>&rsquo;.
 </p>
 </dd>
+<dt><code><a name="WithAixSoname"></a>--with-aix-soname=&lsquo;<samp>aix</samp>&rsquo;, &lsquo;<samp>svr4</samp>&rsquo; or &lsquo;<samp>both</samp>&rsquo;</code></dt>
+<dd><p>Traditional AIX shared library versioning (versioned <code>Shared Object</code>
+files as members of unversioned <code>Archive Library</code> files named
+&lsquo;<samp>lib.a</samp>&rsquo;) causes numerous headaches for package managers. However,
+<code>Import Files</code> as members of <code>Archive Library</code> files allow for
+<strong>filename-based versioning</strong> of shared libraries as seen on Linux/SVR4,
+where this is called the &quot;SONAME&quot;. But as they prevent static linking,
+<code>Import Files</code> may be used with <code>Runtime Linking</code> only, where the
+linker does search for &lsquo;<samp>libNAME.so</samp>&rsquo; before &lsquo;<samp>libNAME.a</samp>&rsquo; library
+filenames with the &lsquo;<samp>-lNAME</samp>&rsquo; linker flag.
+</p>
+<a name="AixLdCommand"></a><p>For detailed information please refer to the AIX
+<a href="http://www-01.ibm.com/support/knowledgecenter/search/%22the%20ld%20command%2C%20also%20called%20the%20linkage%20editor%20or%20binder%22">ld
+Command</a> reference.
+</p>
+<p>As long as shared library creation is enabled, upon:
+</p><dl compact="compact">
+<dt><code>--with-aix-soname=aix</code></dt>
+<dt><code>--with-aix-soname=both</code></dt>
+<dd><p>A (traditional AIX) <code>Shared Archive Library</code> file is created:
+ </p><ul>
+<li> using the &lsquo;<samp>libNAME.a</samp>&rsquo; filename scheme
+  </li><li> with the <code>Shared Object</code> file as archive member named
+  &lsquo;<samp>libNAME.so.V</samp>&rsquo; (except for &lsquo;<samp>libgcc_s</samp>&rsquo;, where the <code>Shared
+  Object</code> file is named &lsquo;<samp>shr.o</samp>&rsquo; for backwards compatibility), which
+  <ul class="no-bullet">
+<li>- is used for runtime loading from inside the &lsquo;<samp>libNAME.a</samp>&rsquo; file
+   </li><li>- is used for dynamic loading via
+   <code>dlopen(&quot;libNAME.a(libNAME.so.V)&quot;, RTLD_MEMBER)</code>
+   </li><li>- is used for shared linking
+   </li><li>- is used for static linking, so no separate <code>Static Archive
+   Library</code> file is needed
+  </li></ul>
+</li></ul>
+</dd>
+<dt><code>--with-aix-soname=both</code></dt>
+<dt><code>--with-aix-soname=svr4</code></dt>
+<dd><p>A (second) <code>Shared Archive Library</code> file is created:
+ </p><ul>
+<li> using the &lsquo;<samp>libNAME.so.V</samp>&rsquo; filename scheme
+ </li><li> with the <code>Shared Object</code> file as archive member named
+ &lsquo;<samp>shr.o</samp>&rsquo;, which
+  <ul class="no-bullet">
+<li>- is created with the <code>-G linker flag</code>
+   </li><li>- has the <code>F_LOADONLY</code> flag set
+   </li><li>- is used for runtime loading from inside the &lsquo;<samp>libNAME.so.V</samp>&rsquo; file
+   </li><li>- is used for dynamic loading via <code>dlopen(&quot;libNAME.so.V(shr.o)&quot;,
+   RTLD_MEMBER)</code>
+  </li></ul>
+</li><li> with the <code>Import File</code> as archive member named &lsquo;<samp>shr.imp</samp>&rsquo;,
+ which
+  <ul class="no-bullet">
+<li>- refers to &lsquo;<samp>libNAME.so.V(shr.o)</samp>&rsquo; as the &quot;SONAME&quot;, to be recorded
+   in the <code>Loader Section</code> of subsequent binaries
+   </li><li>- indicates whether &lsquo;<samp>libNAME.so.V(shr.o)</samp>&rsquo; is 32 or 64 bit
+   </li><li>- lists all the public symbols exported by &lsquo;<samp>lib.so.V(shr.o)</samp>&rsquo;,
+   eventually decorated with the <code>&lsquo;<samp>weak</samp>&rsquo; Keyword</code>
+   </li><li>- is necessary for shared linking against &lsquo;<samp>lib.so.V(shr.o)</samp>&rsquo;
+   </li></ul>
+</li></ul>
+<p>A symbolic link using the &lsquo;<samp>libNAME.so</samp>&rsquo; filename scheme is created:
+  </p><ul>
+<li> pointing to the &lsquo;<samp>libNAME.so.V</samp>&rsquo; <code>Shared Archive Library</code> file
+  </li><li> to permit the <code>ld Command</code> to find &lsquo;<samp>lib.so.V(shr.imp)</samp>&rsquo; via
+  the &lsquo;<samp>-lNAME</samp>&rsquo; argument (requires <code>Runtime Linking</code> to be enabled)
+  </li><li> to permit dynamic loading of &lsquo;<samp>lib.so.V(shr.o)</samp>&rsquo; without the need
+  to specify the version number via <code>dlopen(&quot;libNAME.so(shr.o)&quot;,
+  RTLD_MEMBER)</code>
+  </li></ul>
+</dd>
+</dl>
+
+<p>As long as static library creation is enabled, upon:
+</p><dl compact="compact">
+<dt><code>--with-aix-soname=svr4</code></dt>
+<dd><p>A <code>Static Archive Library</code> is created:
+ </p><ul>
+<li> using the &lsquo;<samp>libNAME.a</samp>&rsquo; filename scheme
+ </li><li> with all the <code>Static Object</code> files as archive members, which
+  <ul class="no-bullet">
+<li>- are used for static linking
+  </li></ul>
+</li></ul>
+</dd>
+</dl>
+
+<p>While the aix-soname=&lsquo;<samp>svr4</samp>&rsquo; option does not create <code>Shared Object</code>
+files as members of unversioned <code>Archive Library</code> files any more, package
+managers still are responsible to
+<a href="./specific.html#TransferAixShobj">transfer</a> <code>Shared Object</code> files
+found as member of a previously installed unversioned <code>Archive Library</code>
+file into the newly installed <code>Archive Library</code> file with the same
+filename.
+</p>
+<p><em>WARNING:</em> Creating <code>Shared Object</code> files with <code>Runtime Linking</code>
+enabled may bloat the TOC, eventually leading to <code>TOC overflow</code> errors,
+requiring the use of either the <samp>-Wl,-bbigtoc</samp> linker flag (seen to
+break with the <code>GDB</code> debugger) or some of the TOC-related compiler flags,
+see &ldquo;RS/6000 and PowerPC Options&rdquo; in the main manual.
+</p>
+<p><samp>--with-aix-soname</samp> is currently supported by &lsquo;<samp>libgcc_s</samp>&rsquo; only, so
+this option is still experimental and not for normal use yet.
+</p>
+<p>Default is the traditional behaviour <samp>--with-aix-soname=&lsquo;<samp>aix</samp>&rsquo;</samp>.
+</p>
+</dd>
 <dt><code>--enable-languages=<var>lang1</var>,<var>lang2</var>,&hellip;</code></dt>
 <dd><p>Specify that only a particular subset of compilers and
 their runtime libraries should be built.  For a list of valid values for
@@ -1026,7 +1164,8 @@ support for <code>libquadmath</code> on systems supporting it.
 </p>
 </dd>
 <dt><code>--disable-libgomp</code></dt>
-<dd><p>Specify that the run-time libraries used by GOMP should not be built.
+<dd><p>Specify that the GNU Offloading and Multi Processing Runtime Library
+should not be built.
 </p>
 </dd>
 <dt><code>--disable-libvtv</code></dt>
@@ -1269,21 +1408,13 @@ a cross compiler, they will not be used to configure target libraries.
 <dt><code>--with-isl=<var>pathname</var></code></dt>
 <dt><code>--with-isl-include=<var>pathname</var></code></dt>
 <dt><code>--with-isl-lib=<var>pathname</var></code></dt>
-<dt><code>--with-cloog=<var>pathname</var></code></dt>
-<dt><code>--with-cloog-include=<var>pathname</var></code></dt>
-<dt><code>--with-cloog-lib=<var>pathname</var></code></dt>
-<dd><p>If you do not have ISL and the CLooG
-libraries installed in a standard location and you want to build GCC,
-you can explicitly specify the directory where they are installed
-(&lsquo;<samp>--with-isl=<var>islinstalldir</var></samp>&rsquo;,
-&lsquo;<samp>--with-cloog=<var>clooginstalldir</var></samp>&rsquo;). The
+<dd><p>If you do not have the ISL library installed in a standard location and you
+want to build GCC, you can explicitly specify the directory where it is
+installed (&lsquo;<samp>--with-isl=<var>islinstalldir</var></samp>&rsquo;). The
 <samp>--with-isl=<var>islinstalldir</var></samp> option is shorthand for
 <samp>--with-isl-lib=<var>islinstalldir</var>/lib</samp> and
-<samp>--with-isl-include=<var>islinstalldir</var>/include</samp>.  Likewise the
-<samp>--with-cloog=<var>clooginstalldir</var></samp> option is shorthand for
-<samp>--with-cloog-lib=<var>clooginstalldir</var>/lib</samp> and
-<samp>--with-cloog-include=<var>clooginstalldir</var>/include</samp>.  If these
-shorthand assumptions are not correct, you can use the explicit
+<samp>--with-isl-include=<var>islinstalldir</var>/include</samp>. If this
+shorthand assumption is not correct, you can use the explicit
 include and lib options directly.
 </p>
 <p>These flags are applicable to the host platform only.  When building
@@ -1355,11 +1486,41 @@ default for a toolchain with an assembler that accepts it and
 GLIBC 2.11 or above, otherwise disabled.
 </p>
 </dd>
+<dt><code>--with-diagnostics-color=<var>choice</var></code></dt>
+<dd><p>Tells GCC to use <var>choice</var> as the default for <samp>-fdiagnostics-color=</samp>
+option (if not used explicitly on the command line).  <var>choice</var>
+can be one of &lsquo;<samp>never</samp>&rsquo;, &lsquo;<samp>auto</samp>&rsquo;, &lsquo;<samp>always</samp>&rsquo;, and &lsquo;<samp>auto-if-env</samp>&rsquo;
+where &lsquo;<samp>auto</samp>&rsquo; is the default.  &lsquo;<samp>auto-if-env</samp>&rsquo; means that
+<samp>-fdiagnostics-color=auto</samp> will be the default if <code>GCC_COLORS</code>
+is present and non-empty in the environment, and
+<samp>-fdiagnostics-color=never</samp> otherwise.
+</p>
+</dd>
 <dt><code>--enable-lto</code></dt>
 <dt><code>--disable-lto</code></dt>
 <dd><p>Enable support for link-time optimization (LTO).  This is enabled by
 default, and may be disabled using <samp>--disable-lto</samp>.
 </p>
+</dd>
+<dt><code>--enable-linker-plugin-configure-flags=FLAGS</code></dt>
+<dt><code>--enable-linker-plugin-flags=FLAGS</code></dt>
+<dd><p>By default, linker plugins (such as the LTO plugin) are built for the
+host system architecture.  For the case that the linker has a
+different (but run-time compatible) architecture, these flags can be
+specified to build plugins that are compatible to the linker.  For
+example, if you are building GCC for a 64-bit x86_64
+(&lsquo;<samp>x86_64-unknown-linux-gnu</samp>&rsquo;) host system, but have a 32-bit x86
+GNU/Linux (&lsquo;<samp>i686-pc-linux-gnu</samp>&rsquo;) linker executable (which is
+executable on the former system), you can configure GCC as follows for
+getting compatible linker plugins:
+</p>
+<div class="smallexample">
+<pre class="smallexample">% <var>srcdir</var>/configure \
+    --host=x86_64-unknown-linux-gnu \
+    --enable-linker-plugin-configure-flags=--host=i686-pc-linux-gnu \
+    --enable-linker-plugin-flags='CC=gcc\ -m32\ -Wl,-rpath,[...]/i686-pc-linux-gnu/lib'
+</pre></div>
+
 </dd>
 <dt><code>--with-plugin-ld=<var>pathname</var></code></dt>
 <dd><p>Enable an alternate linker to be used at link-time optimization (LTO)
@@ -1389,7 +1550,23 @@ available for building the initial bootstrap compiler.
 do not, this option applies only to the multilibs that use glibc.
 However, such configurations may not work well as not all the relevant
 configuration in GCC is on a per-multilib basis.
-</p></dd>
+</p>
+</dd>
+<dt><code>--enable-as-accelerator-for=<var>target</var></code></dt>
+<dd><p>Build as offload target compiler. Specify offload host triple by <var>target</var>.
+</p>
+</dd>
+<dt><code>--enable-offload-targets=<var>target1</var>[=<var>path1</var>],&hellip;,<var>targetN</var>[=<var>pathN</var>]</code></dt>
+<dd><p>Enable offloading to targets <var>target1</var>, &hellip;, <var>targetN</var>.
+Offload compilers are expected to be already installed.  Default search
+path for them is <samp><var>exec-prefix</var></samp>, but it can be changed by
+specifying paths <var>path1</var>, &hellip;, <var>pathN</var>.
+</p>
+<div class="smallexample">
+<pre class="smallexample">% <var>srcdir</var>/configure \
+    --enable-offload-target=i686-unknown-linux-gnu=/path/to/i686/compiler,x86_64-pc-linux-gnu
+</pre></div>
+</dd>
 </dl>
 
 <a name="Cross_002dCompiler_002dSpecific-Options"></a>

@@ -23,16 +23,16 @@ module UnstructuredGridImageSilo_Form
 end module UnstructuredGridImageSilo_Form
 
 module UnstructuredGridImages
-  use UnstructuredGridImageSilo_Form
-! 5.0 branch contains    UnstructuredGridImageForm => UnstructuredGridImageSiloForm
+  use UnstructuredGridImageSilo_Form, &
+        UnstructuredGridImageForm => UnstructuredGridImageSiloForm
 contains
   subroutine foo
     class (GridImageSiloTemplate), allocatable :: a
-    type (UnstructuredGridImageSiloForm) :: b
+    type (UnstructuredGridImageForm) :: b
     integer :: i = 0
     allocate (a, mold = b)
     select type (a)
-      type is (UnstructuredGridImageSiloForm)
+      type is (UnstructuredGridImageForm)
         i = 1
       class default
         i = 2

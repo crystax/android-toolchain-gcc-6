@@ -1,4 +1,5 @@
 /* { dg-do compile { target { powerpc*-*-* && ilp32 } } } */
+/* { dg-skip-if "" { powerpc*-*-aix* } { "*" } { "" } } */
 /* { dg-options "-O2 -mpowerpc64" } */
 
 /*
@@ -123,7 +124,6 @@ void calc_1566(
     int isactact;
     short days_to_next_cpn = 0;
     const short discDaytype = CM_DISCOUNTING_DAYTYP;
-    int j;
 
     if(bbit_calc_sx_b24__value())
         isactact = (dtyp_is_actact_(&sDayType) != 0);
@@ -133,7 +133,7 @@ void calc_1566(
     short days_in_current_period = difday_(&sDayType,CM_FLPRV,CM_FLNXT,&ercode);
     const short sfreq1 = (CM_CTUP_GOOD_TO_GO == 1 && CM_PAYMENT_FREQUENCY == 1);
 
-    for (j = 0; j < CM_FNUM; j++) {
+    for (int j = 0; j < CM_FNUM; j++) {
 
         if(j == 0) {
             days_to_next_cpn = difday_(&sDayType,asSettleDt,CM_FLNXT,&ercode);

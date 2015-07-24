@@ -1,5 +1,5 @@
 /* Get CPU type and Features for x86 processors.
-   Copyright (C) 2012-2014 Free Software Foundation, Inc.
+   Copyright (C) 2012-2015 Free Software Foundation, Inc.
    Contributed by Sriraman Tallam (tmsriram@google.com)
 
 This file is part of GCC.
@@ -97,7 +97,10 @@ enum processor_features
   FEATURE_SSE4_A,
   FEATURE_FMA4,
   FEATURE_XOP,
-  FEATURE_FMA
+  FEATURE_FMA,
+  FEATURE_AVX512F,
+  FEATURE_BMI,
+  FEATURE_BMI2
 };
 
 struct __processor_model
@@ -288,8 +291,14 @@ get_available_features (unsigned int ecx, unsigned int edx,
     {
       unsigned int eax, ebx, ecx, edx;
       __cpuid_count (7, 0, eax, ebx, ecx, edx);
+      if (ebx & bit_BMI)
+        features |= (1 << FEATURE_BMI);
       if (ebx & bit_AVX2)
 	features |= (1 << FEATURE_AVX2);
+      if (ebx & bit_BMI2)
+        features |= (1 << FEATURE_BMI2);
+      if (ebx & bit_AVX512F)
+	features |= (1 << FEATURE_AVX512F);
     }
 
   unsigned int ext_level;

@@ -238,7 +238,17 @@ examples of supported build configurations are:
 <dt>&lsquo;<samp>bootstrap-lto</samp>&rsquo;</dt>
 <dd><p>Enables Link-Time Optimization for host tools during bootstrapping.
 &lsquo;<samp>BUILD_CONFIG=bootstrap-lto</samp>&rsquo; is equivalent to adding
-<samp>-flto</samp> to &lsquo;<samp>BOOT_CFLAGS</samp>&rsquo;.
+<samp>-flto</samp> to &lsquo;<samp>BOOT_CFLAGS</samp>&rsquo;.  This option assumes that the host
+supports the linker plugin (e.g. GNU ld version 2.21 or later or GNU gold
+version 2.21 or later).
+</p>
+</dd>
+<dt>&lsquo;<samp>bootstrap-lto-noplugin</samp>&rsquo;</dt>
+<dd><p>This option is similar to <code>bootstrap-lto</code>, but is intended for
+hosts that do not support the linker plugin.  Without the linker plugin 
+static libraries are not compiled with link-time optimizations.  Since 
+the GCC middle end and back end are in <samp>libbackend.a</samp> this means
+that only the front end is actually LTO optimized.
 </p>
 </dd>
 <dt>&lsquo;<samp>bootstrap-debug</samp>&rsquo;</dt>

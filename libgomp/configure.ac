@@ -2,7 +2,7 @@
 # aclocal -I ../config && autoconf && autoheader && automake
 
 AC_PREREQ(2.64)
-AC_INIT([GNU OpenMP Runtime Library], 1.0,,[libgomp])
+AC_INIT([GNU Offloading and Multi Processing Runtime Library], 1.0,,[libgomp])
 AC_CONFIG_HEADER(config.h)
 
 # -------
@@ -199,6 +199,8 @@ case "$host" in
        [AC_MSG_ERROR([Pthreads are required to build libgomp])])])
 esac
 
+m4_include([plugin/configfrag.ac])
+
 # Check for functions needed.
 AC_CHECK_FUNCS(getloadavg clock_gettime strtoull)
 
@@ -243,6 +245,9 @@ fi
 
 # See if we support thread-local storage.
 GCC_CHECK_TLS
+
+# See if we have emulated thread-local storage.
+GCC_CHECK_EMUTLS
 
 # See what sort of export controls are available.
 LIBGOMP_CHECK_ATTRIBUTE_VISIBILITY
@@ -353,4 +358,5 @@ CFLAGS="$save_CFLAGS"
 
 AC_CONFIG_FILES(omp.h omp_lib.h omp_lib.f90 libgomp_f.h)
 AC_CONFIG_FILES(Makefile testsuite/Makefile libgomp.spec)
+AC_CONFIG_FILES([testsuite/libgomp-test-support.pt.exp:testsuite/libgomp-test-support.exp.in])
 AC_OUTPUT

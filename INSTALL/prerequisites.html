@@ -247,7 +247,7 @@ installed but it is not in your default library search path, the
 <samp>--with-mpc-lib</samp> and <samp>--with-mpc-include</samp>.
 </p>
 </dd>
-<dt>ISL Library version 0.12.2</dt>
+<dt>ISL Library version 0.14 (or 0.12.2)</dt>
 <dd>
 <p>Necessary to build GCC with the Graphite loop optimizations.
 It can be downloaded from <a href="ftp://gcc.gnu.org/pub/gcc/infrastructure/">ftp://gcc.gnu.org/pub/gcc/infrastructure/</a>
@@ -256,22 +256,6 @@ in a subdirectory of your GCC sources named <samp>isl</samp>, it will be
 built together with GCC.  Alternatively, the <samp>--with-isl</samp> configure
 option should be used if ISL is not installed in your default library
 search path.
-</p>
-</dd>
-<dt>CLooG 0.18.1</dt>
-<dd>
-<p>Necessary to build GCC with the Graphite loop optimizations.  It can be
-downloaded from <a href="ftp://gcc.gnu.org/pub/gcc/infrastructure/">ftp://gcc.gnu.org/pub/gcc/infrastructure/</a> as
-<samp>cloog-0.18.1.tar.gz</samp>.  If a CLooG source distribution is found
-in a subdirectory of your GCC sources named <samp>cloog</samp>, it will be
-built together with GCC.  Alternatively, the <samp>--with-cloog</samp> configure
-option should be used if CLooG is not installed in your default library search
-path.
-</p>
-<p>If you want to install CLooG separately it needs to be built against
-ISL 0.12.2 by using the <samp>--with-isl=system</samp> to direct CLooG to pick
-up an already installed ISL.  Using the ISL library as bundled with CLooG
-is not supported.
 </p>
 </dd>
 </dl>
@@ -322,7 +306,7 @@ to the latest released version.
 details.  Tcl 8.6 has a known regression in RE pattern handling that
 make parts of the testsuite fail.  See
 <a href="http://core.tcl.tk/tcl/tktview/267b7e2334ee2e9de34c4b00d6e72e2f1997085f">http://core.tcl.tk/tcl/tktview/267b7e2334ee2e9de34c4b00d6e72e2f1997085f</a>
-for more information.
+for more information.  This bug has been fixed in 8.6.1.
 </p>
 </dd>
 <dt>autogen version 5.5.4 (or later) and</dt>
@@ -365,6 +349,12 @@ included in releases.
 <p>Necessary for running <code>texi2dvi</code> and <code>texi2pdf</code>, which
 are used when running <code>make dvi</code> or <code>make pdf</code> to create
 DVI or PDF files, respectively.
+</p>
+</dd>
+<dt>Sphinx version 1.0 (or later)</dt>
+<dd>
+<p>Necessary to regenerate <samp>jit/docs/_build/texinfo</samp> from the <samp>.rst</samp>
+files in the directories below <samp>jit/docs</samp>.
 </p>
 </dd>
 <dt>SVN (any version)</dt>

@@ -1,8 +1,6 @@
 /* PR middle-end/56917 */
 /* { dg-do run } */
-/* { dg-options "-fsanitize=undefined" } */
-
-#include <stdio.h>
+/* { dg-options "-fsanitize=undefined -fno-sanitize-recover=undefined" } */
 
 #define INT_MIN (-__INT_MAX__ - 1)
 #define LONG_MIN (-__LONG_MAX__ - 1L)
@@ -29,15 +27,8 @@ fn3 (unsigned long long int ull)
 int
 main (void)
 {
-  fputs ("UBSAN TEST START\n", stderr);
-
   if (fn1 (__INT_MAX__ + 1U) != INT_MIN
       || fn2 (__LONG_MAX__ + 1UL) != LONG_MIN
       || fn3 (__LONG_LONG_MAX__ + 1ULL) != LLONG_MIN)
     __builtin_abort ();
-
-  fputs ("UBSAN TEST END\n", stderr);
-  return 0;
 }
-
-/* { dg-output "UBSAN TEST START(\n|\r\n|\r)UBSAN TEST END" } */

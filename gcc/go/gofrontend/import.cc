@@ -338,6 +338,9 @@ Import::import(Gogo* gogo, const std::string& local_name,
       this->package_->set_priority(prio);
       this->require_c_string(";\n");
 
+      while (stream->match_c_string("package"))
+	this->read_one_package();
+
       while (stream->match_c_string("import"))
 	this->read_one_import();
 
@@ -379,6 +382,25 @@ Import::import(Gogo* gogo, const std::string& local_name,
     }
 
   return this->package_;
+}
+
+// Read a package line.  This let us reliably determine the pkgpath
+// symbol, even if the package was compiled with a -fgo-prefix option.
+
+void
+Import::read_one_package()
+{
+  this->require_c_string("package ");
+  std::string package_name = this->read_identifier();
+  this->require_c_string(" ");
+  std::string pkgpath = this->read_identifier();
+  this->require_c_string(" ");
+  std::string pkgpath_symbol = this->read_identifier();
+  this->require_c_string(";\n");
+
+  Package* p = this->gogo_->register_package(pkgpath, pkgpath_symbol,
+					     Linemap::unknown_location());
+  p->set_package_name(package_name, this->location());
 }
 
 // Read an import line.  We don't actually care about these.
@@ -435,7 +457,7 @@ Import::import_const()
   Typed_identifier tid(name, type, this->location_);
   Named_object* no = this->package_->add_constant(tid, expr);
   if (this->add_to_globals_)
-    this->gogo_->add_named_object(no);
+    this->gogo_->add_dot_import_object(no);
 }
 
 // Import a type.
@@ -468,7 +490,7 @@ Import::import_var()
   Named_object* no;
   no = this->package_->add_variable(name, var);
   if (this->add_to_globals_)
-    this->gogo_->add_named_object(no);
+    this->gogo_->add_dot_import_object(no);
 }
 
 // Import a function into PACKAGE.  PACKAGE is normally
@@ -522,7 +544,7 @@ Import::import_func(Package* package)
     {
       no = package->add_function_declaration(name, fntype, loc);
       if (this->add_to_globals_)
-	this->gogo_->add_named_object(no);
+	this->gogo_->add_dot_import_object(no);
     }
   return no;
 }

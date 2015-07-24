@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "GFORTRAN 1"
-.TH GFORTRAN 1 "2015-06-26" "gcc-4.9.3" "GNU"
+.TH GFORTRAN 1 "2015-04-22" "gcc-5.1.0" "GNU"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -183,7 +183,7 @@ by type.  Explanations are in the following sections.
 \&\fB\-ffixed\-line\-length\-none \-ffree\-form \-ffree\-line\-length\-\fR\fIn\fR 
 \&\fB\-ffree\-line\-length\-none \-fimplicit\-none \-finteger\-4\-integer\-8 
 \&\-fmax\-identifier\-length \-fmodule\-private \-fno\-fixed\-form \-fno\-range\-check 
-\&\-fopenmp \-freal\-4\-real\-10 \-freal\-4\-real\-16 \-freal\-4\-real\-8 
+\&\-fopenacc \-fopenmp \-freal\-4\-real\-10 \-freal\-4\-real\-16 \-freal\-4\-real\-8 
 \&\-freal\-8\-real\-10 \-freal\-8\-real\-16 \-freal\-8\-real\-4 \-std=\fR\fIstd\fR\fB \fR
 .IP "\fIPreprocessing Options\fR" 4
 .IX Item "Preprocessing Options"
@@ -200,7 +200,7 @@ by type.  Explanations are in the following sections.
 \&\fB\-Waliasing \-Wall \-Wampersand \-Warray\-bounds
 \&\-Wc\-binding\-type \-Wcharacter\-truncation 
 \&\-Wconversion \-Wfunction\-elimination \-Wimplicit\-interface 
-\&\-Wimplicit\-procedure \-Wintrinsic\-shadow \-Wintrinsics\-std 
+\&\-Wimplicit\-procedure \-Wintrinsic\-shadow \-Wuse\-without\-only \-Wintrinsics\-std 
 \&\-Wline\-truncation \-Wno\-align\-commons \-Wno\-tabs \-Wreal\-q\-constant 
 \&\-Wsurprising \-Wunderflow \-Wunused\-parameter \-Wrealloc\-lhs \-Wrealloc\-lhs\-all 
 \&\-Wtarget\-lifetime \-fmax\-errors=\fR\fIn\fR \fB\-fsyntax\-only \-pedantic \-pedantic\-errors\fR
@@ -324,6 +324,18 @@ Specify that no implicit typing is allowed, unless overridden by explicit
 .IX Item "-fcray-pointer"
 Enable the Cray pointer extension, which provides C\-like pointer
 functionality.
+.IP "\fB\-fopenacc\fR" 4
+.IX Item "-fopenacc"
+Enable the OpenACC extensions.  This includes OpenACC \f(CW\*(C`!$acc\*(C'\fR
+directives in free form and \f(CW\*(C`c$acc\*(C'\fR, \f(CW*$acc\fR and
+\&\f(CW\*(C`!$acc\*(C'\fR directives in fixed form, \f(CW\*(C`!$\*(C'\fR conditional
+compilation sentinels in free form and \f(CW\*(C`c$\*(C'\fR, \f(CW\*(C`*$\*(C'\fR and
+\&\f(CW\*(C`!$\*(C'\fR sentinels in fixed form, and when linking arranges for the
+OpenACC runtime library to be linked in.
+.Sp
+Note that this is an experimental feature, incomplete, and subject to
+change in future versions of \s-1GCC. \s0 See
+<\fBhttps://gcc.gnu.org/wiki/OpenACC\fR> for more information.
 .IP "\fB\-fopenmp\fR" 4
 .IX Item "-fopenmp"
 Enable the OpenMP extensions.  This includes OpenMP \f(CW\*(C`!$omp\*(C'\fR directives
@@ -417,7 +429,7 @@ language standard, and warnings are given for the Fortran 77 features
 that are permitted but obsolescent in later standards. \fB\-std=f2008ts\fR
 allows the Fortran 2008 standard including the additions of the 
 Technical Specification (\s-1TS\s0) 29113 on Further Interoperability of Fortran
-with C.
+with C and \s-1TS 18508\s0 on Additional Parallel Features in Fortran.
 .SS "Enable and customize preprocessing"
 .IX Subsection "Enable and customize preprocessing"
 Preprocessor related options. See section 
@@ -717,14 +729,17 @@ Warn when a character assignment will truncate the assigned string.
 .IP "\fB\-Wline\-truncation\fR" 4
 .IX Item "-Wline-truncation"
 Warn when a source code line will be truncated.  This option is
-implied by \fB\-Wall\fR.
+implied by \fB\-Wall\fR.  For free-form source code, the default is
+\&\fB\-Werror=line\-truncation\fR such that truncations are reported as
+error.
 .IP "\fB\-Wconversion\fR" 4
 .IX Item "-Wconversion"
 Warn about implicit conversions that are likely to change the value of 
 the expression after conversion. Implied by \fB\-Wall\fR.
 .IP "\fB\-Wconversion\-extra\fR" 4
 .IX Item "-Wconversion-extra"
-Warn about implicit conversions between different types and kinds.
+Warn about implicit conversions between different types and kinds. This
+option does \fInot\fR imply \fB\-Wconversion\fR.
 .IP "\fB\-Wextra\fR" 4
 .IX Item "-Wextra"
 Enables some warning options for usages of language features which
@@ -757,17 +772,17 @@ While technically legal these usually indicate that an error has been made.
 .Sp
 This currently produces a warning under the following circumstances:
 .RS 4
-.IP "\(bu" 4
+.IP "*" 4
 An \s-1INTEGER SELECT\s0 construct has a \s-1CASE\s0 that can never be matched as its
 lower value is greater than its upper value.
-.IP "\(bu" 4
+.IP "*" 4
 A \s-1LOGICAL SELECT\s0 construct has three \s-1CASE\s0 statements.
-.IP "\(bu" 4
+.IP "*" 4
 A \s-1TRANSFER\s0 specifies a source that is shorter than the destination.
-.IP "\(bu" 4
+.IP "*" 4
 The type of a function result is declared more than once with the same type.  If
 \&\fB\-pedantic\fR or standard-conforming mode is enabled, this is an error.
-.IP "\(bu" 4
+.IP "*" 4
 A \f(CW\*(C`CHARACTER\*(C'\fR variable is declared with negative length.
 .RE
 .RS 4
@@ -776,20 +791,24 @@ A \f(CW\*(C`CHARACTER\*(C'\fR variable is declared with negative length.
 .IX Item "-Wtabs"
 By default, tabs are accepted as whitespace, but tabs are not members
 of the Fortran Character Set.  For continuation lines, a tab followed
-by a digit between 1 and 9 is supported.  \fB\-Wno\-tabs\fR will cause
-a warning to be issued if a tab is encountered. Note, \fB\-Wno\-tabs\fR
+by a digit between 1 and 9 is supported.  \fB\-Wtabs\fR will cause
+a warning to be issued if a tab is encountered. Note, \fB\-Wtabs\fR
 is active for \fB\-pedantic\fR, \fB\-std=f95\fR, \fB\-std=f2003\fR,
-\&\fB\-std=f2008\fR and \fB\-Wall\fR.
+\&\fB\-std=f2008\fR, \fB\-std=f2008ts\fR and \fB\-Wall\fR.
 .IP "\fB\-Wunderflow\fR" 4
 .IX Item "-Wunderflow"
 Produce a warning when numerical constant expressions are
-encountered, which yield an \s-1UNDERFLOW\s0 during compilation.
+encountered, which yield an \s-1UNDERFLOW\s0 during compilation. Enabled by default.
 .IP "\fB\-Wintrinsic\-shadow\fR" 4
 .IX Item "-Wintrinsic-shadow"
 Warn if a user-defined procedure or module procedure has the same name as an
 intrinsic; in this case, an explicit interface or \f(CW\*(C`EXTERNAL\*(C'\fR or
 \&\f(CW\*(C`INTRINSIC\*(C'\fR declaration might be needed to get calls later resolved to
 the desired intrinsic/procedure.  This option is implied by \fB\-Wall\fR.
+.IP "\fB\-Wuse\-without\-only\fR" 4
+.IX Item "-Wuse-without-only"
+Warn if a \f(CW\*(C`USE\*(C'\fR statement has no \f(CW\*(C`ONLY\*(C'\fR qualifier and 
+thus implicitly imports all public entities of the used module.
 .IP "\fB\-Wunused\-dummy\-argument\fR" 4
 .IX Item "-Wunused-dummy-argument"
 Warn about unused dummy arguments. This option is implied by \fB\-Wall\fR.
@@ -799,7 +818,8 @@ Contrary to \fBgcc\fR's meaning of \fB\-Wunused\-parameter\fR,
 \&\fBgfortran\fR's implementation of this option does not warn
 about unused dummy arguments (see \fB\-Wunused\-dummy\-argument\fR),
 but about unused \f(CW\*(C`PARAMETER\*(C'\fR values. \fB\-Wunused\-parameter\fR
-is not included in \fB\-Wall\fR but is implied by \fB\-Wall \-Wextra\fR.
+is implied by \fB\-Wextra\fR if also \fB\-Wunused\fR or
+\&\fB\-Wall\fR is used.
 .IP "\fB\-Walign\-commons\fR" 4
 .IX Item "-Walign-commons"
 By default, \fBgfortran\fR warns about any occasion of variables being
@@ -1052,10 +1072,9 @@ experimenting with issues such as integration of \s-1GNU\s0 Fortran into
 existing system environments (vis\-a\*`\-vis existing libraries, tools,
 and so on).
 .Sp
-For example, with \fB\-funderscoring\fR, and assuming other defaults like
-\&\fB\-fcase\-lower\fR and that \f(CW\*(C`j()\*(C'\fR and \f(CW\*(C`max_count()\*(C'\fR are
-external functions while \f(CW\*(C`my_var\*(C'\fR and \f(CW\*(C`lvar\*(C'\fR are local variables,
-a statement like
+For example, with \fB\-funderscoring\fR, and assuming that \f(CW\*(C`j()\*(C'\fR and
+\&\f(CW\*(C`max_count()\*(C'\fR are external functions while \f(CW\*(C`my_var\*(C'\fR and
+\&\f(CW\*(C`lvar\*(C'\fR are local variables, a statement like
 .Sp
 .Vb 1
 \&        I = J() + MAX_COUNT (MY_VAR, LVAR)
@@ -1299,11 +1318,11 @@ the real and imaginary parts of local \f(CW\*(C`COMPLEX\*(C'\fR variables),
 \&\fB\-finit\-character=\fR\fIn\fR (where \fIn\fR is an \s-1ASCII\s0 character
 value) options.  These options do not initialize
 .RS 4
-.IP "\(bu" 4
+.IP "*" 4
 allocatable arrays
-.IP "\(bu" 4
+.IP "*" 4
 components of derived type variables
-.IP "\(bu" 4
+.IP "*" 4
 variables that appear in an \f(CW\*(C`EQUIVALENCE\*(C'\fR statement.
 .RE
 .RS 4
@@ -1387,7 +1406,7 @@ See the Info entry for \fBgfortran\fR for contributors to \s-1GCC\s0 and
 \&\s-1GNU\s0 Fortran.
 .SH "COPYRIGHT"
 .IX Header "COPYRIGHT"
-Copyright (c) 2004\-2014 Free Software Foundation, Inc.
+Copyright (c) 2004\-2015 Free Software Foundation, Inc.
 .PP
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the \s-1GNU\s0 Free Documentation License, Version 1.3 or

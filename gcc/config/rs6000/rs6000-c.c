@@ -1,5 +1,5 @@
 /* Subroutines for the C front end on the PowerPC architecture.
-   Copyright (C) 2002-2014 Free Software Foundation, Inc.
+   Copyright (C) 2002-2015 Free Software Foundation, Inc.
 
    Contributed by Zack Weinberg <zack@codesourcery.com>
    and Paolo Bonzini <bonzini@gnu.org>
@@ -25,9 +25,20 @@
 #include "coretypes.h"
 #include "tm.h"
 #include "cpplib.h"
+#include "hash-set.h"
+#include "machmode.h"
+#include "vec.h"
+#include "double-int.h"
+#include "input.h"
+#include "alias.h"
+#include "symtab.h"
+#include "wide-int.h"
+#include "inchash.h"
 #include "tree.h"
+#include "fold-const.h"
 #include "stor-layout.h"
 #include "stringpool.h"
+#include "wide-int.h"
 #include "c-family/c-common.h"
 #include "c-family/c-pragma.h"
 #include "diagnostic-core.h"
@@ -159,6 +170,23 @@ init_vector_keywords (void)
     }
 }
 
+/* Helper function to find out which RID_INT_N_* code is the one for
+   __int128, if any.  Returns RID_MAX+1 if none apply, which is safe
+   (for our purposes, since we always expect to have __int128) to
+   compare against.  */
+static int
+rid_int128(void)
+{
+  int i;
+
+  for (i = 0; i < NUM_INT_N_ENTS; i ++)
+    if (int_n_enabled_p[i]
+	&& int_n_data[i].bitsize == 128)
+      return RID_INT_N_0 + i;
+
+  return RID_MAX + 1;
+}
+
 /* Called to decide whether a conditional macro should be expanded.
    Since we have exactly one such macro (i.e, 'vector'), we do not
    need to examine the 'tok' parameter.  */
@@ -233,7 +261,7 @@ rs6000_macro_to_expand (cpp_reader *pfile, const cpp_token *tok)
 	      || rid_code == RID_INT || rid_code == RID_CHAR
 	      || rid_code == RID_FLOAT
 	      || (rid_code == RID_DOUBLE && TARGET_VSX)
-	      || (rid_code == RID_INT128 && TARGET_VADDUQM))
+	      || (rid_code == rid_int128 () && TARGET_VADDUQM))
 	    {
 	      expand_this = C_CPP_HASHNODE (__vector_keyword);
 	      /* If the next keyword is bool or pixel, it
@@ -362,6 +390,10 @@ rs6000_target_modify_macros (bool define_p, HOST_WIDE_INT flags,
     rs6000_define_or_undefine_macro (define_p, "__QUAD_MEMORY_ATOMIC__");
   if ((flags & OPTION_MASK_CRYPTO) != 0)
     rs6000_define_or_undefine_macro (define_p, "__CRYPTO__");
+  if ((flags & OPTION_MASK_UPPER_REGS_DF) != 0)
+    rs6000_define_or_undefine_macro (define_p, "__UPPER_REGS_DF__");
+  if ((flags & OPTION_MASK_UPPER_REGS_SF) != 0)
+    rs6000_define_or_undefine_macro (define_p, "__UPPER_REGS_SF__");
 
   /* options from the builtin masks.  */
   if ((bu_mask & RS6000_BTM_SPE) != 0)
@@ -388,7 +420,7 @@ rs6000_cpu_cpp_builtins (cpp_reader *pfile)
   if (TARGET_FRSQRTES)
     builtin_define ("__RSQRTEF__");
 
-  if (TARGET_EXTRA_BUILTINS)
+  if (TARGET_EXTRA_BUILTINS && cpp_get_options (pfile)->lang != CLK_ASM)
     {
       /* Define the AltiVec syntactic elements.  */
       builtin_define ("__vector=__attribute__((altivec(vector__)))");
@@ -495,6 +527,12 @@ rs6000_cpu_cpp_builtins (cpp_reader *pfile)
     default:
       break;
     }
+
+  /* Vector element order.  */
+  if (BYTES_BIG_ENDIAN || (rs6000_altivec_element_order == 2))
+    builtin_define ("__VEC_ELEMENT_REG_ORDER__=__ORDER_BIG_ENDIAN__");
+  else
+    builtin_define ("__VEC_ELEMENT_REG_ORDER__=__ORDER_LITTLE_ENDIAN__");
 
   /* Let the compiled code know if 'f' class registers will not be available.  */
   if (TARGET_SOFT_FLOAT || !TARGET_FPRS)
@@ -4416,7 +4454,7 @@ assignment for unaligned loads and stores");
       tree arg1_inner_type;
       tree decl, stmt;
       tree innerptrtype;
-      enum machine_mode mode;
+      machine_mode mode;
 
       /* No second argument. */
       if (nargs != 2)
@@ -4449,8 +4487,7 @@ assignment for unaligned loads and stores");
       mode = TYPE_MODE (arg1_type);
       if ((mode == V2DFmode || mode == V2DImode) && VECTOR_MEM_VSX_P (mode)
 	  && TREE_CODE (arg2) == INTEGER_CST
-	  && TREE_INT_CST_HIGH (arg2) == 0
-	  && (TREE_INT_CST_LOW (arg2) == 0 || TREE_INT_CST_LOW (arg2) == 1))
+	  && wi::ltu_p (arg2, 2))
 	{
 	  tree call = NULL_TREE;
 
@@ -4464,8 +4501,7 @@ assignment for unaligned loads and stores");
 	}
       else if (mode == V1TImode && VECTOR_MEM_VSX_P (mode)
 	       && TREE_CODE (arg2) == INTEGER_CST
-	       && TREE_INT_CST_HIGH (arg2) == 0
-	       && TREE_INT_CST_LOW (arg2) == 0)
+	       && wi::eq_p (arg2, 0))
 	{
 	  tree call = rs6000_builtin_decls[VSX_BUILTIN_VEC_EXT_V1TI];
 	  return build_call_expr (call, 2, arg1, arg2);
@@ -4520,7 +4556,7 @@ assignment for unaligned loads and stores");
       tree arg1_inner_type;
       tree decl, stmt;
       tree innerptrtype;
-      enum machine_mode mode;
+      machine_mode mode;
 
       /* No second or third arguments. */
       if (nargs != 3)
@@ -4554,8 +4590,7 @@ assignment for unaligned loads and stores");
       mode = TYPE_MODE (arg1_type);
       if ((mode == V2DFmode || mode == V2DImode) && VECTOR_UNIT_VSX_P (mode)
 	  && TREE_CODE (arg2) == INTEGER_CST
-	  && TREE_INT_CST_HIGH (arg2) == 0
-	  && (TREE_INT_CST_LOW (arg2) == 0 || TREE_INT_CST_LOW (arg2) == 1))
+	  && wi::ltu_p (arg2, 2))
 	{
 	  tree call = NULL_TREE;
 
@@ -4571,8 +4606,7 @@ assignment for unaligned loads and stores");
 	}
       else if (mode == V1TImode && VECTOR_UNIT_VSX_P (mode)
 	       && TREE_CODE (arg2) == INTEGER_CST
-	       && TREE_INT_CST_HIGH (arg2) == 0
-	       && TREE_INT_CST_LOW (arg2) == 0)
+	       && wi::eq_p (arg2, 0))
 	{
 	  tree call = rs6000_builtin_decls[VSX_BUILTIN_VEC_SET_V1TI];
 

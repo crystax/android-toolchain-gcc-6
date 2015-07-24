@@ -102,7 +102,8 @@ here, only the ones that require host-specific or target-specific
 information have to. 
 </p>
 <ul>
-<li> <a href="#alpha-x-x">alpha*-*-*</a>
+<li> <a href="#aarch64-x-x">aarch64*-*-*</a>
+</li><li> <a href="#alpha-x-x">alpha*-*-*</a>
 </li><li> <a href="#alpha-dec-osf51">alpha*-dec-osf5.1</a>
 </li><li> <a href="#amd64-x-solaris210">amd64-*-solaris2.10</a>
 </li><li> <a href="#arm-x-eabi">arm-*-eabi</a>
@@ -116,7 +117,6 @@ information have to.
 </li><li> <a href="#hppa-hp-hpux11">hppa*-hp-hpux11</a>
 </li><li> <a href="#x-x-linux-gnu">*-*-linux-gnu</a>
 </li><li> <a href="#ix86-x-linux">i?86-*-linux*</a>
-</li><li> <a href="#ix86-x-solaris289">i?86-*-solaris2.9</a>
 </li><li> <a href="#ix86-x-solaris210">i?86-*-solaris2.10</a>
 </li><li> <a href="#ia64-x-linux">ia64-*-linux</a>
 </li><li> <a href="#ia64-x-hpux">ia64-*-hpux*</a>
@@ -135,6 +135,7 @@ information have to.
 </li><li> <a href="#mips-sgi-irix6">mips-sgi-irix6</a>
 </li><li> <a href="#nds32le-x-elf">nds32le-*-elf</a>
 </li><li> <a href="#nds32be-x-elf">nds32be-*-elf</a>
+</li><li> <a href="#nvptx-x-none">nvptx-*-none</a>
 </li><li> <a href="#powerpc-x-x">powerpc*-*-*</a>
 </li><li> <a href="#powerpc-x-darwin">powerpc-*-darwin*</a>
 </li><li> <a href="#powerpc-x-elf">powerpc-*-elf</a>
@@ -159,6 +160,7 @@ information have to.
 </li><li> <a href="#tilegx-x-linux">tilegx-*-linux*</a>
 </li><li> <a href="#tilegxbe-x-linux">tilegxbe-*-linux*</a>
 </li><li> <a href="#tilepro-x-linux">tilepro-*-linux*</a>
+</li><li> <a href="#visium-x-elf">visium-*-elf</a>
 </li><li> <a href="#x-x-vxworks">*-*-vxworks*</a>
 </li><li> <a href="#x86-64-x-x">x86_64-*-*, amd64-*-*</a>
 </li><li> <a href="#x86-64-x-solaris210">x86_64-*-solaris2.1[0-9]*</a>
@@ -178,6 +180,22 @@ information have to.
 
 
 <!-- -------- host/target specific issues start here ---------------- -->
+<hr /><a name="aarch64_002dx_002dx"></a><a name="aarch64_002a_002d_002a_002d_002a"></a>
+<h3 class="heading">aarch64*-*-*</h3>
+<p>Binutils pre 2.24 does not have support for selecting <samp>-mabi</samp> and
+does not support ILP32.  If it is used to build GCC 4.9 or later, GCC will
+not support option <samp>-mabi=ilp32</samp>.
+</p>
+<p>To enable a workaround for the Cortex-A53 erratum number 835769 by default
+(for all CPUs regardless of -mcpu option given) at configure time use the
+<samp>--enable-fix-cortex-a53-835769</samp> option.  This will enable the fix by
+default and can be explicitly disabled during during compilation by passing the
+<samp>-mno-fix-cortex-a53-835769</samp> option.  Conversely,
+<samp>--disable-fix-cortex-a53-835769</samp> will disable the workaround by
+default.  The workaround is disabled by default if neither of
+<samp>--enable-fix-cortex-a53-835769</samp> or
+<samp>--disable-fix-cortex-a53-835769</samp> is given at configure time.
+</p>
 <hr /><a name="alpha_002dx_002dx"></a><a name="alpha_002a_002d_002a_002d_002a"></a>
 <h3 class="heading">alpha*-*-*</h3>
 <p>This section contains general configuration information for all
@@ -542,23 +560,6 @@ See <a href="http://gcc.gnu.org/PR10877">bug 10877</a> for more information.
 possible you have a hardware problem.  Further information on this can be
 found on <a href="http://www.bitwizard.nl/sig11/">www.bitwizard.nl</a>.
 </p>
-<hr /><a name="ix86_002dx_002dsolaris29"></a><a name="i_003f86_002d_002a_002dsolaris2_002e9"></a>
-<h3 class="heading">i?86-*-solaris2.9</h3>
-<p>The Sun assembler in Solaris 9 has several bugs and limitations.
-While GCC works around them, several features are missing, so it is
-recommended to use the GNU assembler instead.  There is no bundled
-version, but the current version, from GNU binutils 2.22, is known to
-work.
-</p>
-<p>Solaris&nbsp;2/x86 doesn&rsquo;t support the execution of SSE/SSE2 instructions
-before Solaris&nbsp;9 4/04, even if the CPU supports them.  Programs will
-receive <code>SIGILL</code> if they try.  The fix is available both in
-Solaris&nbsp;9 Update&nbsp;6 and kernel patch 112234-12 or newer.  To
-avoid this problem,
-<samp>-march</samp> defaults to &lsquo;<samp>pentiumpro</samp>&rsquo; on Solaris 9.  If
-you have the patch installed, you can configure GCC with an appropriate
-<samp>--with-arch</samp> option, but need GNU <code>as</code> for SSE2 support.
-</p>
 <hr /><a name="ix86_002dx_002dsolaris210"></a><a name="i_003f86_002d_002a_002dsolaris2_002e10"></a>
 <h3 class="heading">i?86-*-solaris2.10</h3>
 <p>Use this for Solaris 10 or later on x86 and x86-64 systems.  Starting
@@ -613,33 +614,6 @@ GCC versions 3.2.3 and earlier, <samp>--enable-libunwind-exceptions</samp>
 is required to build GCC.  For GCC 3.3 and later, this is the default.
 For gcc 3.4.3 and later, <samp>--enable-libunwind-exceptions</samp> is
 removed and the system libunwind library will always be used.
-</p>
-<hr /><a name="aarch64_002dx_002dx"></a><a name="aarch64_002a_002d_002a_002d_002a"></a>
-<h3 class="heading">aarch64*-*-*</h3>
-<p>Binutils pre 2.24 does not have support for selecting <samp>-mabi</samp> and
-does not support ILP32.  If it is used to build GCC 4.9 or later, GCC will
-not support option <samp>-mabi=ilp32</samp>.
-</p>
-<p>To enable a workaround for the Cortex-A53 erratum number 835769 by default
-(for all CPUs regardless of -mcpu option given) at configure time use the
-<samp>--enable-fix-cortex-a53-835769</samp> option.  This will enable the fix by
-default and can be explicitly disabled during compilation by passing the
-<samp>-mno-fix-cortex-a53-835769</samp> option.  Conversely,
-<samp>--disable-fix-cortex-a53-835769</samp> will disable the workaround by
-default.  The workaround is disabled by default if neither of
-<samp>--enable-fix-cortex-a53-835769</samp> or
-<samp>--disable-fix-cortex-a53-835769</samp> is given at configure time.
-</p>
-<p>To enable a workaround for the Cortex-A53 erratum number 843419 by default
-(for all CPUs regardless of -mcpu option given) at configure time use the
-<samp>--enable-fix-cortex-a53-843419</samp> option.  This workaround is applied at
-link time.  Enabling the workaround will cause GCC to pass the relevant option
-to the linker.  It can be explicitly disabled during compilation by passing the
-<samp>-mno-fix-cortex-a53-843419</samp> option.  Conversely,
-<samp>--disable-fix-cortex-a53-843419</samp> will disable the workaround by default.
-The workaround is disabled by default if neither of
-<samp>--enable-fix-cortex-a53-843419</samp> or
-<samp>--disable-fix-cortex-a53-843419</samp> is given at configure time.
 </p>
 <hr />
 <!-- rs6000-ibm-aix*, powerpc-ibm-aix* --><a name="x_002dibm_002daix"></a><a name="g_t_002a_002dibm_002daix_002a"></a>
@@ -713,7 +687,7 @@ APAR IY26685 (AIX 4.3) or APAR IY25528 (AIX 5.1).  It also requires a
 fix for another AIX Assembler bug and a co-dependent AIX Archiver fix
 referenced as APAR IY53606 (AIX 5.2) or as APAR IY54774 (AIX 5.1)
 </p>
-<p>&lsquo;<samp>libstdc++</samp>&rsquo; in GCC 3.4 increments the major version number of the
+<a name="TransferAixShobj"></a><p>&lsquo;<samp>libstdc++</samp>&rsquo; in GCC 3.4 increments the major version number of the
 shared object and GCC installation places the <samp>libstdc++.a</samp>
 shared library in a common location which will overwrite the and GCC
 3.3 version of the shared library.  Applications either need to be
@@ -743,6 +717,11 @@ available for runtime dynamic loading, but not linking:
 <pre class="smallexample">% ar -q libstdc++.a libstdc++.so.4 libstdc++.so.5
 </pre></div>
 
+<p>Eventually, the
+<a href="./configure.html#WithAixSoname"><samp>--with-aix-soname=svr4</samp></a>
+configure option may drop the need for this procedure for libraries that
+support it.
+</p>
 <p>Linking executables and shared libraries may produce warnings of
 duplicate symbols.  The assembly files generated by GCC for AIX always
 have included multiple symbol definitions for certain global variable
@@ -934,6 +913,24 @@ This configuration is intended for embedded systems.
 <h3 class="heading">nds32be-*-elf</h3>
 <p>Andes NDS32 target in big endian mode.
 </p>
+<hr /><a name="nvptx_002dx_002dnone"></a><a name="nvptx_002d_002a_002dnone"></a>
+<h3 class="heading">nvptx-*-none</h3>
+<p>Nvidia PTX target.
+</p>
+<p>Instead of GNU binutils, you will need to install
+<a href="https://github.com/MentorEmbedded/nvptx-tools/">nvptx-tools</a>.
+Tell GCC where to find it:
+<samp>--with-build-time-tools=[install-nvptx-tools]/nvptx-none/bin</samp>.
+</p>
+<p>A nvptx port of newlib is available at
+<a href="https://github.com/MentorEmbedded/nvptx-newlib/">nvptx-newlib</a>.
+It can be automatically built together with GCC.  For this, add a
+symbolic link to nvptx-newlib&rsquo;s <samp>newlib</samp> directory to the
+directory containing the GCC sources.
+</p>
+<p>Use the <samp>--disable-sjlj-exceptions</samp> and
+<samp>--enable-newlib-io-long-long</samp> options when configuring.
+</p>
 <hr /><a name="powerpc_002dx_002dx"></a><a name="powerpc_002d_002a_002d_002a"></a>
 <h3 class="heading">powerpc-*-*</h3>
 <p>You can specify a default version for the <samp>-mcpu=<var>cpu_type</var></samp>
@@ -1017,10 +1014,9 @@ supported as cross-compilation target only.
 </p>
 <hr /><a name="x_002dx_002dsolaris2"></a><a name="g_t_002a_002d_002a_002dsolaris2_002a"></a>
 <h3 class="heading">*-*-solaris2*</h3>
-<p>Support for Solaris 9 has been obsoleted in GCC 4.9, but can still be
-enabled by configuring with <samp>--enable-obsolete</samp>.  Support will be
-removed in GCC 4.10.  Support for Solaris 8 has removed in GCC 4.8.
-Support for Solaris 7 has been removed in GCC 4.6.
+<p>Support for Solaris 9 has been removed in GCC 4.10.  Support for Solaris
+8 has been removed in GCC 4.8.  Support for Solaris 7 has been removed
+in GCC 4.6.
 </p>
 <p>Sun does not ship a C compiler with Solaris 2 before Solaris 10, though
 you can download the Sun Studio compilers for free.  In Solaris 10 and
@@ -1097,25 +1093,6 @@ itself, rather it is a kernel bug triggered by the <code>expect</code>
 program which is used only by the GCC testsuite driver.  When the bug
 causes the <code>expect</code> program to miss anticipated output, extra
 testsuite failures appear.
-</p>
-<p>There are patches for Solaris 9 (117171-11 or newer for
-SPARC, 117172-11 or newer for Intel) that address this problem.
-</p>
-<p>Thread-local storage (TLS) is supported in Solaris&nbsp;9, but requires
-some patches.  The &lsquo;<samp>libthread</samp>&rsquo; patches provide the
-<code>__tls_get_addr</code> (SPARC, 64-bit x86) resp.&nbsp;<code>___tls_get_addr</code>
-(32-bit x86) functions.  On Solaris&nbsp;9, the necessary support
-on SPARC is present since FCS, while 114432-05 or newer is required on
-Intel.  Additionally, on Solaris&nbsp;9/x86, patch 113986-02 or newer is
-required for the Sun <code>ld</code> and runtime linker (<code>ld.so.1</code>)
-support, while Solaris&nbsp;9/SPARC works since FCS.  The linker
-patches must be installed even if GNU <code>ld</code> is used. Sun
-<code>as</code> in Solaris&nbsp;9 doesn&rsquo;t support the necessary
-relocations, so GNU <code>as</code> must be used.  The <code>configure</code>
-script checks for those prerequisites and automatically enables TLS
-support if they are met.  Although those minimal patch versions should
-work, it is recommended to use the latest patch versions which include
-additional bug fixes.
 </p>
 <hr /><a name="sparc_002dx_002dx"></a><a name="sparc_002a_002d_002a_002d_002a"></a>
 <h3 class="heading">sparc*-*-*</h3>
@@ -1250,6 +1227,11 @@ port requires binutils-2.23 or newer.
 <h3 class="heading">tilepro-*-linux*</h3>
 <p>The TILEPro processor running GNU/Linux.  This port requires
 binutils-2.22 or newer.
+</p>
+<hr /><a name="visium_002dx_002delf"></a><a name="visium_002d_002a_002delf"></a>
+<h3 class="heading">visium-*-elf</h3>
+<p>CDS VISIUMcore processor.
+This configuration is intended for embedded systems.
 </p>
 <hr /><a name="x_002dx_002dvxworks"></a><a name="g_t_002a_002d_002a_002dvxworks_002a"></a>
 <h3 class="heading">*-*-vxworks*</h3>

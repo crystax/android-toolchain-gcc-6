@@ -1,4 +1,4 @@
-/* Copyright (C) 2008-2014 Free Software Foundation, Inc.
+/* Copyright (C) 2008-2015 Free Software Foundation, Inc.
    Contributed by Janne Blomqvist
 
 This file is part of the GNU Fortran runtime library (libgfortran).
@@ -121,10 +121,7 @@ fbuf_alloc (gfc_unit * u, int len)
     {
       /* Round up to nearest multiple of the current buffer length.  */
       newlen = ((u->fbuf->pos + len) / u->fbuf->len + 1) * u->fbuf->len;
-      dest = realloc (u->fbuf->buf, newlen);
-      if (dest == NULL)
-	return NULL;
-      u->fbuf->buf = dest;
+      u->fbuf->buf = xrealloc (u->fbuf->buf, newlen);
       u->fbuf->len = newlen;
     }
 

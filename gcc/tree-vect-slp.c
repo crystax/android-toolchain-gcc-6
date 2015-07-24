@@ -1,5 +1,5 @@
 /* SLP - Basic Block Vectorization
-   Copyright (C) 2007-2014 Free Software Foundation, Inc.
+   Copyright (C) 2007-2015 Free Software Foundation, Inc.
    Contributed by Dorit Naishlos <dorit@il.ibm.com>
    and Ira Rosen <irar@il.ibm.com>
 
@@ -24,9 +24,22 @@ along with GCC; see the file COPYING3.  If not see
 #include "coretypes.h"
 #include "dumpfile.h"
 #include "tm.h"
+#include "hash-set.h"
+#include "machmode.h"
+#include "vec.h"
+#include "double-int.h"
+#include "input.h"
+#include "alias.h"
+#include "symtab.h"
+#include "wide-int.h"
+#include "inchash.h"
 #include "tree.h"
+#include "fold-const.h"
 #include "stor-layout.h"
 #include "target.h"
+#include "predict.h"
+#include "hard-reg-set.h"
+#include "function.h"
 #include "basic-block.h"
 #include "gimple-pretty-print.h"
 #include "tree-ssa-alias.h"
@@ -42,8 +55,23 @@ along with GCC; see the file COPYING3.  If not see
 #include "tree-ssanames.h"
 #include "tree-pass.h"
 #include "cfgloop.h"
+#include "hashtab.h"
+#include "rtl.h"
+#include "flags.h"
+#include "statistics.h"
+#include "real.h"
+#include "fixed-value.h"
+#include "insn-config.h"
+#include "expmed.h"
+#include "dojump.h"
+#include "explow.h"
+#include "calls.h"
+#include "emit-rtl.h"
+#include "varasm.h"
+#include "stmt.h"
 #include "expr.h"
 #include "recog.h"		/* FIXME: for insn_data */
+#include "insn-codes.h"
 #include "optabs.h"
 #include "tree-vectorizer.h"
 #include "langhooks.h"
@@ -206,9 +234,11 @@ vect_get_place_in_interleaving_chain (gimple stmt, gimple first_stmt)
 
 /* Get the defs for the rhs of STMT (collect them in OPRNDS_INFO), check that
    they are of a valid type and that they match the defs of the first stmt of
-   the SLP group (stored in OPRNDS_INFO).  */
+   the SLP group (stored in OPRNDS_INFO).  If there was a fatal error
+   return -1, if the error could be corrected by swapping operands of the
+   operation return 1, if everything is ok return 0.  */
 
-static bool
+static int 
 vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
                              gimple stmt, bool first,
                              vec<slp_oprnd_info> *oprnds_info)
@@ -221,8 +251,9 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
   struct loop *loop = NULL;
   bool pattern = false;
   slp_oprnd_info oprnd_info;
-  int op_idx = 1;
-  tree compare_rhs = NULL_TREE;
+  int first_op_idx = 1;
+  bool commutative = false;
+  bool first_op_cond = false;
 
   if (loop_vinfo)
     loop = LOOP_VINFO_LOOP (loop_vinfo);
@@ -230,34 +261,40 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
   if (is_gimple_call (stmt))
     {
       number_of_oprnds = gimple_call_num_args (stmt);
-      op_idx = 3;
+      first_op_idx = 3;
     }
   else if (is_gimple_assign (stmt))
     {
+      enum tree_code code = gimple_assign_rhs_code (stmt);
       number_of_oprnds = gimple_num_ops (stmt) - 1;
       if (gimple_assign_rhs_code (stmt) == COND_EXPR)
-        number_of_oprnds++;
-    }
-  else
-    return false;
-
-  for (i = 0; i < number_of_oprnds; i++)
-    {
-      if (compare_rhs)
 	{
-	  oprnd = compare_rhs;
-	  compare_rhs = NULL_TREE;
+	  first_op_cond = true;
+	  commutative = true;
+	  number_of_oprnds++;
 	}
       else
-        oprnd = gimple_op (stmt, op_idx++);
+	commutative = commutative_tree_code (code);
+    }
+  else
+    return -1;
+
+  bool swapped = false;
+  for (i = 0; i < number_of_oprnds; i++)
+    {
+again:
+      if (first_op_cond)
+	{
+	  if (i == 0 || i == 1)
+	    oprnd = TREE_OPERAND (gimple_op (stmt, first_op_idx),
+				  swapped ? !i : i);
+	  else
+	    oprnd = gimple_op (stmt, first_op_idx + i - 1);
+	}
+      else
+        oprnd = gimple_op (stmt, first_op_idx + (swapped ? !i : i));
 
       oprnd_info = (*oprnds_info)[i];
-
-      if (COMPARISON_CLASS_P (oprnd))
-        {
-          compare_rhs = TREE_OPERAND (oprnd, 1);
-          oprnd = TREE_OPERAND (oprnd, 0);
-	}
 
       if (!vect_is_simple_use (oprnd, NULL, loop_vinfo, bb_vinfo, &def_stmt,
 			       &def, &dt)
@@ -271,7 +308,7 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
               dump_printf (MSG_MISSED_OPTIMIZATION, "\n");
 	    }
 
-	  return false;
+	  return -1;
 	}
 
       /* Check if DEF_STMT is a part of a pattern in LOOP and get the def stmt
@@ -289,6 +326,14 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
           pattern = true;
           if (!first && !oprnd_info->first_pattern)
 	    {
+	      if (i == 0
+		  && !swapped
+		  && commutative)
+		{
+		  swapped = true;
+		  goto again;
+		}
+
 	      if (dump_enabled_p ())
 		{
 		  dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
@@ -298,7 +343,7 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
                   dump_printf (MSG_MISSED_OPTIMIZATION, "\n");
 		}
 
-	      return false;
+	      return 1;
             }
 
           def_stmt = STMT_VINFO_RELATED_STMT (vinfo_for_stmt (def_stmt));
@@ -309,7 +354,7 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
               if (dump_enabled_p ())
                 dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 				 "Unsupported pattern.\n");
-              return false;
+              return -1;
             }
 
           switch (gimple_code (def_stmt))
@@ -326,7 +371,7 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
                 if (dump_enabled_p ())
                   dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 				   "unsupported defining stmt:\n");
-                return false;
+                return -1;
             }
         }
 
@@ -353,11 +398,20 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
                || !types_compatible_p (oprnd_info->first_op_type,
 				       TREE_TYPE (oprnd))))
 	    {
+	      /* Try swapping operands if we got a mismatch.  */
+	      if (i == 0
+		  && !swapped
+		  && commutative)
+		{
+		  swapped = true;
+		  goto again;
+		}
+
 	      if (dump_enabled_p ())
 		dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
 				 "Build SLP failed: different types\n");
 
-	      return false;
+	      return 1;
 	    }
 	}
 
@@ -383,11 +437,26 @@ vect_get_and_check_slp_defs (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
               dump_printf (MSG_MISSED_OPTIMIZATION, "\n");
 	    }
 
-	  return false;
+	  return -1;
 	}
     }
 
-  return true;
+  /* Swap operands.  */
+  if (swapped)
+    {
+      if (first_op_cond)
+	{
+	  tree cond = gimple_assign_rhs1 (stmt);
+	  swap_ssa_operands (stmt, &TREE_OPERAND (cond, 0),
+			     &TREE_OPERAND (cond, 1));
+	  TREE_SET_CODE (cond, swap_tree_comparison (TREE_CODE (cond)));
+	}
+      else
+	swap_ssa_operands (stmt, gimple_assign_rhs1_ptr (stmt),
+			   gimple_assign_rhs2_ptr (stmt));
+    }
+
+  return 0;
 }
 
 
@@ -413,8 +482,8 @@ vect_build_slp_tree_1 (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
   tree vectype, scalar_type, first_op1 = NULL_TREE;
   optab optab;
   int icode;
-  enum machine_mode optab_op2_mode;
-  enum machine_mode vec_mode;
+  machine_mode optab_op2_mode;
+  machine_mode vec_mode;
   struct data_reference *first_dr;
   HOST_WIDE_INT dummy;
   gimple first_load = NULL, prev_first_load = NULL, old_first_load = NULL;
@@ -506,20 +575,21 @@ vect_build_slp_tree_1 (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
             vectorization_factor = *max_nunits;
         }
 
-      if (is_gimple_call (stmt))
+      if (gcall *call_stmt = dyn_cast <gcall *> (stmt))
 	{
 	  rhs_code = CALL_EXPR;
-	  if (gimple_call_internal_p (stmt)
-	      || gimple_call_tail_p (stmt)
-	      || gimple_call_noreturn_p (stmt)
-	      || !gimple_call_nothrow_p (stmt)
-	      || gimple_call_chain (stmt))
+	  if (gimple_call_internal_p (call_stmt)
+	      || gimple_call_tail_p (call_stmt)
+	      || gimple_call_noreturn_p (call_stmt)
+	      || !gimple_call_nothrow_p (call_stmt)
+	      || gimple_call_chain (call_stmt))
 	    {
 	      if (dump_enabled_p ())
 		{
 		  dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location, 
 				   "Build SLP failed: unsupported call type ");
-		  dump_gimple_stmt (MSG_MISSED_OPTIMIZATION, TDF_SLIM, stmt, 0);
+		  dump_gimple_stmt (MSG_MISSED_OPTIMIZATION, TDF_SLIM,
+				    call_stmt, 0);
                   dump_printf (MSG_MISSED_OPTIMIZATION, "\n");
 		}
 	      /* Fatal mismatch.  */
@@ -856,13 +926,8 @@ vect_build_slp_tree (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
 		     bool *matches, unsigned *npermutes, unsigned *tree_size,
 		     unsigned max_tree_size)
 {
-  unsigned nops, i, this_npermutes = 0, this_tree_size = 0;
+  unsigned nops, i, this_tree_size = 0;
   gimple stmt;
-
-  if (!matches)
-    matches = XALLOCAVEC (bool, group_size);
-  if (!npermutes)
-    npermutes = &this_npermutes;
 
   matches[0] = false;
 
@@ -896,13 +961,26 @@ vect_build_slp_tree (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
   slp_oprnd_info oprnd_info;
   FOR_EACH_VEC_ELT (SLP_TREE_SCALAR_STMTS (*node), i, stmt)
     {
-      if (!vect_get_and_check_slp_defs (loop_vinfo, bb_vinfo,
-					stmt, (i == 0), &oprnds_info))
+      switch (vect_get_and_check_slp_defs (loop_vinfo, bb_vinfo,
+					   stmt, (i == 0), &oprnds_info))
 	{
+	case 0:
+	  break;
+	case -1:
+	  matches[0] = false;
 	  vect_free_oprnd_info (oprnds_info);
 	  return false;
+	case 1:
+	  matches[i] = false;
+	  break;
 	}
     }
+  for (i = 0; i < group_size; ++i)
+    if (!matches[i])
+      {
+	vect_free_oprnd_info (oprnds_info);
+	return false;
+      }
 
   stmt = SLP_TREE_SCALAR_STMTS (*node)[0];
 
@@ -929,7 +1007,6 @@ vect_build_slp_tree (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
 	  return false;
 	}
 
-      bool *matches = XALLOCAVEC (bool, group_size);
       if (vect_build_slp_tree (loop_vinfo, bb_vinfo, &child,
 			       group_size, max_nunits, loads,
 			       vectorization_factor, matches,
@@ -958,17 +1035,28 @@ vect_build_slp_tree (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
 	     behavior.  */
 	  && *npermutes < 4)
 	{
+	  unsigned int j;
+	  slp_tree grandchild;
+
 	  /* Roll back.  */
 	  *max_nunits = old_max_nunits;
 	  loads->truncate (old_nloads);
+	  FOR_EACH_VEC_ELT (SLP_TREE_CHILDREN (child), j, grandchild)
+	    vect_free_slp_tree (grandchild);
+	  SLP_TREE_CHILDREN (child).truncate (0);
+
 	  /* Swap mismatched definition stmts.  */
-	  for (unsigned j = 0; j < group_size; ++j)
+	  dump_printf_loc (MSG_NOTE, vect_location,
+			   "Re-trying with swapped operands of stmts ");
+	  for (j = 0; j < group_size; ++j)
 	    if (!matches[j])
 	      {
 		gimple tem = oprnds_info[0]->def_stmts[j];
 		oprnds_info[0]->def_stmts[j] = oprnds_info[1]->def_stmts[j];
 		oprnds_info[1]->def_stmts[j] = tem;
+		dump_printf (MSG_NOTE, "%d ", j);
 	      }
+	  dump_printf (MSG_NOTE, "\n");
 	  /* And try again ... */
 	  if (vect_build_slp_tree (loop_vinfo, bb_vinfo, &child,
 				   group_size, max_nunits, loads,
@@ -1550,9 +1638,11 @@ vect_analyze_slp_instance (loop_vec_info loop_vinfo, bb_vec_info bb_vinfo,
   loads.create (group_size);
 
   /* Build the tree for the SLP instance.  */
+  bool *matches = XALLOCAVEC (bool, group_size);
+  unsigned npermutes = 0;
   if (vect_build_slp_tree (loop_vinfo, bb_vinfo, &node, group_size,
 			   &max_nunits, &loads,
-			   vectorization_factor, NULL, NULL, NULL,
+			   vectorization_factor, matches, &npermutes, NULL,
 			   max_tree_size))
     {
       /* Calculate the unrolling factor based on the smallest type.  */
@@ -2604,14 +2694,11 @@ vect_get_constant_vectors (tree op, slp_tree slp_node,
 		}
 	      else
 		{
-		  tree new_temp
-		    = make_ssa_name (TREE_TYPE (vector_type), NULL);
+		  tree new_temp = make_ssa_name (TREE_TYPE (vector_type));
 		  gimple init_stmt;
-		  op = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (vector_type),
-			       op);		  
+		  op = build1 (VIEW_CONVERT_EXPR, TREE_TYPE (vector_type), op);
 		  init_stmt
-		    = gimple_build_assign_with_ops (VIEW_CONVERT_EXPR,
-						    new_temp, op, NULL_TREE);
+		    = gimple_build_assign (new_temp, VIEW_CONVERT_EXPR, op);
 		  gimple_seq_add_stmt (&ctor_seq, init_stmt);
 		  op = new_temp;
 		}
@@ -2835,8 +2922,8 @@ vect_create_mask_and_perm (gimple stmt, gimple next_scalar_stmt,
       second_vec = dr_chain[second_vec_indx];
 
       /* Generate the permute statement.  */
-      perm_stmt = gimple_build_assign_with_ops (VEC_PERM_EXPR, perm_dest,
-						first_vec, second_vec, mask);
+      perm_stmt = gimple_build_assign (perm_dest, VEC_PERM_EXPR,
+				       first_vec, second_vec, mask);
       data_ref = make_ssa_name (perm_dest, perm_stmt);
       gimple_set_lhs (perm_stmt, data_ref);
       vect_finish_stmt_generation (stmt, perm_stmt, gsi);
@@ -2893,7 +2980,7 @@ vect_get_mask_element (gimple stmt, int first_mask_element, int m,
     }
 
   /* The mask requires the next vector.  */
-  if (*current_mask_element >= mask_nunits * 2)
+  while (*current_mask_element >= mask_nunits * 2)
     {
       if (*needs_first_vector || *mask_fixed)
         {
@@ -2963,7 +3050,7 @@ vect_transform_slp_perm_load (slp_tree node, vec<tree> dr_chain,
   int number_of_mask_fixes = 1;
   bool mask_fixed = false;
   bool needs_first_vector = false;
-  enum machine_mode mode;
+  machine_mode mode;
 
   mode = TYPE_MODE (vectype);
 
@@ -3044,6 +3131,7 @@ vect_transform_slp_perm_load (slp_tree node, vec<tree> dr_chain,
 					  &number_of_mask_fixes, &mask_fixed,
 					  &needs_first_vector))
 		return false;
+	      gcc_assert (current_mask_element < 2 * nunits);
 	      mask[index++] = current_mask_element;
 
               if (index == nunits)
