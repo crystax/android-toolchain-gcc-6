@@ -5352,6 +5352,24 @@ else
 fi
 rm -f conftest*
 
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  #include <stdio.h>
+  #if __LIBCRYSTAX
+    _using_libcrystax
+  #endif
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "_using_libcrystax" >/dev/null 2>&1; then :
+  libcrystax=yes
+else
+  libcrystax=no
+fi
+rm -f conftest*
+
+
 
   # Find platform-specific directories containing configuration info.
   # Also possibly modify flags used elsewhere, as needed by the platform.
@@ -15831,7 +15849,11 @@ fi
   if test $enable_clocale_flag = auto; then
     case ${target_os} in
       linux* | gnu* | kfreebsd*-gnu | knetbsd*-gnu)
+        if test x"$libcrystax" = x"yes"; then
+          enable_clocale_flag=darwin
+        else
 	enable_clocale_flag=gnu
+        fi
 	;;
       darwin*)
 	enable_clocale_flag=darwin
@@ -78319,6 +78341,12 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <sys/syscall.h>
 	   int lk;
+#if !defined(SYS_gettid)
+#define SYS_gettid __NR_gettid
+#endif
+#if !defined(SYS_futex)
+#define SYS_futex __NR_futex
+#endif
 int
 main ()
 {
@@ -78377,6 +78405,12 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <sys/syscall.h>
 	   int lk;
+#if !defined(SYS_gettid)
+#define SYS_gettid __NR_gettid
+#endif
+#if !defined(SYS_futex)
+#define SYS_futex __NR_futex
+#endif
 int
 main ()
 {
