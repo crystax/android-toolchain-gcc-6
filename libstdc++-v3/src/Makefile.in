@@ -347,10 +347,10 @@ WARN_CXXFLAGS = \
 # -I/-D flags to pass when compiling.
 AM_CPPFLAGS = $(GLIBCXX_INCLUDES)
 SUBDIRS = c++98 c++11
-@VTV_CYGMIN_FALSE@toolexeclib_LTLIBRARIES = libstdc++.la
+@VTV_CYGMIN_FALSE@toolexeclib_LTLIBRARIES = libgnustl_shared.la
 
 # Cross compiler support.
-@VTV_CYGMIN_TRUE@toolexeclib_LTLIBRARIES = libvtv.la libstdc++.la
+@VTV_CYGMIN_TRUE@toolexeclib_LTLIBRARIES = libvtv.la libgnustl_shared.la
 @VTV_CYGMIN_TRUE@libvtv_la_SOURCES = vtv_stubs.cc
 @VTV_CYGMIN_TRUE@libvtv_la_LDFLAGS = $(lt_host_flags)
 @VTV_CYGMIN_TRUE@libvtv_la_AM_CXXFLAGS = \
@@ -395,7 +395,7 @@ libstdc___la_DEPENDENCIES = \
 	$(top_builddir)/src/c++11/libc++11convenience.la
 
 libstdc___la_LDFLAGS = \
-	-version-info $(libtool_VERSION) ${version_arg} -lm
+	-avoid-version ${version_arg} -lm
 
 libstdc___la_LINK = $(CXXLINK) $(libstdc___la_LDFLAGS)
 
@@ -570,6 +570,8 @@ clean-toolexeclibLTLIBRARIES:
 	  rm -f "$${dir}/so_locations"; \
 	done
 libstdc++.la: $(libstdc___la_OBJECTS) $(libstdc___la_DEPENDENCIES) 
+	$(libstdc___la_LINK) $(am_libstdc___la_rpath) $(libstdc___la_OBJECTS) $(libstdc___la_LIBADD) $(LIBS)
+libgnustl_shared.la: $(libstdc___la_OBJECTS) $(libstdc___la_DEPENDENCIES) 
 	$(libstdc___la_LINK) $(am_libstdc___la_rpath) $(libstdc___la_OBJECTS) $(libstdc___la_LIBADD) $(LIBS)
 libvtv.la: $(libvtv_la_OBJECTS) $(libvtv_la_DEPENDENCIES) 
 	$(libvtv_la_LINK) $(am_libvtv_la_rpath) $(libvtv_la_OBJECTS) $(libvtv_la_LIBADD) $(LIBS)

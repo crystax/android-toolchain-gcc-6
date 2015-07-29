@@ -23,6 +23,7 @@
     do {							\
 	if (TARGET_ANDROID)					\
 	  builtin_define ("__ANDROID__");			\
+      builtin_define ("__CRYSTAX__"); \
     } while (0)
 
 #if ANDROID_DEFAULT
@@ -38,15 +39,22 @@
   "%{" NOANDROID "|tno-android-ld:" LINUX_SPEC ";:" ANDROID_SPEC "}"
 
 #define ANDROID_LINK_SPEC \
-  "%{shared: -Bsymbolic}"
+  "%{shared: -Bsymbolic} -z noexecstack -z relro -z now"
 
-#define ANDROID_CC1_SPEC						\
+#define ANDROID_CC1_SPEC(ANDROID_PIC_DEFAULT)				\
   "%{!mglibc:%{!muclibc:%{!mbionic: -mbionic}}} "			\
-  "%{!fno-pic:%{!fno-PIC:%{!fpic:%{!fPIC: -fPIC}}}}"
+  "%{!fno-pic:%{!fno-PIC:%{!fpic:%{!fPIC: " ANDROID_PIC_DEFAULT "}}}}"
 
 #define ANDROID_CC1PLUS_SPEC						\
-  "%{!fexceptions:%{!fno-exceptions: -fno-exceptions}} "		\
-  "%{!frtti:%{!fno-rtti: -fno-rtti}}"
+  "%{!fexceptions:%{!fno-exceptions: -fexceptions}} "		\
+  "%{!frtti:%{!fno-rtti: -frtti}}"
+
+#define ANDROID_ASM_SPEC \
+  "--noexecstack"
+
+#define CRYSTAX_LIB_SPEC \
+  "%{static: -lcrystax} " \
+  "%{!static: -Bdynamic -lcrystax}"
 
 #define ANDROID_LIB_SPEC \
   "%{!static: -ldl}"

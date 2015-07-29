@@ -204,6 +204,8 @@ typedef __PTRDIFF_TYPE__ ptrdiff_t;
   || defined(__DragonFly__) \
   || defined(__FreeBSD_kernel__)
 /* __size_t is a typedef on FreeBSD 5, must not trash it. */
+#elif defined(__ANDROID__) && defined(__CRYSTAX__)
+/* __size_t is a typedef in CrystaX NDK */
 #elif defined (__VMS__)
 /* __size_t is also a typedef on VMS.  */
 #else

@@ -113,6 +113,13 @@ AC_DEFUN([GLIBCXX_CONFIGURE], [
   #endif
   ], bionic=yes, bionic=no)
 
+  AC_EGREP_CPP([_using_libcrystax], [
+  #include <stdio.h>
+  #if __LIBCRYSTAX
+    _using_libcrystax
+  #endif
+  ], libcrystax=yes, libcrystax=no)
+
   # Find platform-specific directories containing configuration info.
   # Also possibly modify flags used elsewhere, as needed by the platform.
   GLIBCXX_CHECK_HOST
@@ -1984,7 +1991,11 @@ AC_DEFUN([GLIBCXX_ENABLE_CLOCALE], [
   if test $enable_clocale_flag = auto; then
     case ${target_os} in
       linux* | gnu* | kfreebsd*-gnu | knetbsd*-gnu)
+        if test x"$libcrystax" = x"yes"; then
+          enable_clocale_flag=darwin
+        else
 	enable_clocale_flag=gnu
+        fi
 	;;
       darwin* | freebsd*)
 	enable_clocale_flag=darwin

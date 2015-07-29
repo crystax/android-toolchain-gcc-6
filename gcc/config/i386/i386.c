@@ -45997,6 +45997,8 @@ ix86_mangle_type (const_tree type)
   switch (TYPE_MODE (type))
     {
     case TFmode:
+      if (TARGET_HAS_BIONIC && TARGET_64BIT)
+        return "e";
       /* __float128 is "g".  */
       return "g";
     case XFmode:
