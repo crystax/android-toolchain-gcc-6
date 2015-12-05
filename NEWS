@@ -9,21 +9,24 @@ http://gcc.gnu.org/gcc-5/index.html
 
                               GCC 5 Release Series
 
-   July 16, 2015
+   December 4, 2015
 
    The [1]GNU project and the GCC developers are pleased to announce the
-   release of GCC 5.2.
+   release of GCC 5.3.
 
    This release is a bug-fix release, containing fixes for regressions in
-   GCC 5.1 relative to previous releases of GCC.
+   GCC 5.2 relative to previous releases of GCC.
 
 Release History
 
+   GCC 5.3
+          December 4, 2015 ([2]changes, [3]documentation)
+
    GCC 5.2
-          July 16, 2015 ([2]changes, [3]documentation)
+          July 16, 2015 ([4]changes, [5]documentation)
 
    GCC 5.1
-          April 22, 2015 ([4]changes, [5]documentation)
+          April 22, 2015 ([6]changes, [7]documentation)
 
 References and Acknowledgements
 
@@ -31,54 +34,56 @@ References and Acknowledgements
    supports several other languages aside from C, it now stands for the
    GNU Compiler Collection.
 
-   A list of [6]successful builds is updated as new information becomes
+   A list of [8]successful builds is updated as new information becomes
    available.
 
    The GCC developers would like to thank the numerous people that have
    contributed new features, improvements, bug fixes, and other changes as
-   well as test results to GCC. This [7]amazing group of volunteers is
+   well as test results to GCC. This [9]amazing group of volunteers is
    what makes GCC successful.
 
-   For additional information about GCC please refer to the [8]GCC project
-   web site or contact the [9]GCC development mailing list.
+   For additional information about GCC please refer to the [10]GCC
+   project web site or contact the [11]GCC development mailing list.
 
-   To obtain GCC please use [10]our mirror sites or [11]our SVN server.
+   To obtain GCC please use [12]our mirror sites or [13]our SVN server.
 
 
     For questions related to the use of GCC, please consult these web
-    pages and the [12]GCC manuals. If that fails, the
-    [13]gcc-help@gcc.gnu.org mailing list might help. Comments on these
+    pages and the [14]GCC manuals. If that fails, the
+    [15]gcc-help@gcc.gnu.org mailing list might help. Comments on these
     web pages and the development of GCC are welcome on our developer
-    list at [14]gcc@gcc.gnu.org. All of [15]our lists have public
+    list at [16]gcc@gcc.gnu.org. All of [17]our lists have public
     archives.
 
-   Copyright (C) [16]Free Software Foundation, Inc. Verbatim copying and
+   Copyright (C) [18]Free Software Foundation, Inc. Verbatim copying and
    distribution of this entire article is permitted in any medium,
    provided this notice is preserved.
 
-   These pages are [17]maintained by the GCC team. Last modified
-   2015-07-16[18].
+   These pages are [19]maintained by the GCC team. Last modified
+   2015-12-04[20].
 
 References
 
    1. http://www.gnu.org/
    2. http://gcc.gnu.org/gcc-5/changes.html
-   3. http://gcc.gnu.org/onlinedocs/5.2.0/
+   3. http://gcc.gnu.org/onlinedocs/5.3.0/
    4. http://gcc.gnu.org/gcc-5/changes.html
-   5. http://gcc.gnu.org/onlinedocs/5.1.0/
-   6. http://gcc.gnu.org/gcc-5/buildstat.html
-   7. http://gcc.gnu.org/onlinedocs/gcc/Contributors.html
-   8. http://gcc.gnu.org/index.html
-   9. mailto:gcc@gcc.gnu.org
-  10. http://gcc.gnu.org/mirrors.html
-  11. http://gcc.gnu.org/svn.html
-  12. https://gcc.gnu.org/onlinedocs/
-  13. mailto:gcc-help@gcc.gnu.org
-  14. mailto:gcc@gcc.gnu.org
-  15. https://gcc.gnu.org/lists.html
-  16. http://www.fsf.org/
-  17. https://gcc.gnu.org/about.html
-  18. http://validator.w3.org/check/referer
+   5. http://gcc.gnu.org/onlinedocs/5.2.0/
+   6. http://gcc.gnu.org/gcc-5/changes.html
+   7. http://gcc.gnu.org/onlinedocs/5.1.0/
+   8. http://gcc.gnu.org/gcc-5/buildstat.html
+   9. http://gcc.gnu.org/onlinedocs/gcc/Contributors.html
+  10. http://gcc.gnu.org/index.html
+  11. mailto:gcc@gcc.gnu.org
+  12. http://gcc.gnu.org/mirrors.html
+  13. http://gcc.gnu.org/svn.html
+  14. https://gcc.gnu.org/onlinedocs/
+  15. mailto:gcc-help@gcc.gnu.org
+  16. mailto:gcc@gcc.gnu.org
+  17. https://gcc.gnu.org/lists.html
+  18. http://www.fsf.org/
+  19. https://gcc.gnu.org/about.html
+  20. http://validator.w3.org/check/referer
 ======================================================================
 http://gcc.gnu.org/gcc-5/changes.html
 
@@ -585,6 +590,11 @@ libgccjit
 
 New Targets and Target Specific Improvements
 
+  Reporting stack usage
+
+     * The BFIN, FT32, H8300, IQ2000 and M32C targets now support the
+       -fstack-usage option.
+
   AArch64
 
      * Code generation for the ARM Cortex-A57 processor has been improved.
@@ -873,20 +883,36 @@ Target Specific Changes
        The timer value is received as third argument and stored in
        register %ebx.
 
+(Pending) GCC 5.3
+
+   This is the [43]list of problem reports (PRs) from GCC's bug tracking
+   system that are known to be fixed in the 5.3 release. This list might
+   not be complete (that is, it is possible that some PRs that have been
+   fixed are not listed here).
+
+Target Specific Changes
+
+  IA-32/x86-64
+
+     * GCC now supports the Intel CPU named Skylake with AVX-512
+       extensions through -march=skylake-avx512. The switch enables the
+       following ISA extensions: AVX-512F, AVX512VL, AVX-512CD, AVX-512BW,
+       AVX-512DQ.
+
 
     For questions related to the use of GCC, please consult these web
-    pages and the [43]GCC manuals. If that fails, the
-    [44]gcc-help@gcc.gnu.org mailing list might help. Comments on these
+    pages and the [44]GCC manuals. If that fails, the
+    [45]gcc-help@gcc.gnu.org mailing list might help. Comments on these
     web pages and the development of GCC are welcome on our developer
-    list at [45]gcc@gcc.gnu.org. All of [46]our lists have public
+    list at [46]gcc@gcc.gnu.org. All of [47]our lists have public
     archives.
 
-   Copyright (C) [47]Free Software Foundation, Inc. Verbatim copying and
+   Copyright (C) [48]Free Software Foundation, Inc. Verbatim copying and
    distribution of this entire article is permitted in any medium,
    provided this notice is preserved.
 
-   These pages are [48]maintained by the GCC team. Last modified
-   2015-07-16[49].
+   These pages are [49]maintained by the GCC team. Last modified
+   2015-12-04[50].
 
 References
 
@@ -899,9 +925,9 @@ References
    7. https://gcc.gnu.org/wiki/OpenACC
    8. https://gcc.gnu.org/install/configure.html
    9. https://www.cilkplus.org/
-  10. http://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
+  10. https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
   11. http://gcc.gnu.org/projects/cxx1y.html
-  12. http://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
+  12. https://isocpp.org/std/standing-documents/sd-6-sg10-feature-test-recommendations
   13. http://gcc.gnu.org/projects/cxx1y.html
   14. http://gcc.gnu.org/projects/cxx1y.html
   15. http://gcc.gnu.org/projects/cxx1y.html
@@ -919,8 +945,8 @@ References
   27. https://gcc.gnu.org/wiki/Fortran2008Status
   28. https://gcc.gnu.org/wiki/Coarray
   29. http://www.opencoarrays.org/
-  30. http://golang.org/cmd/go
-  31. http://golang.org/cmd/gofmt
+  30. https://golang.org/cmd/go/
+  31. https://golang.org/cmd/gofmt/
   32. https://gcc.gnu.org/onlinedocs/gcc-5.1.0/jit/intro/index.html
   33. https://gcc.gnu.org/onlinedocs/gcc-5.1.0/jit/cp/index.html
   34. https://github.com/davidmalcolm/pygccjit
@@ -929,16 +955,17 @@ References
   37. https://gcc.gnu.org/onlinedocs/gcc-5.1.0/jit/intro/tutorial05.html
   38. https://gcc.gnu.org/onlinedocs/gcc/Spec-Files.html
   39. https://gcc.gnu.org/onlinedocs/gcc/Named-Address-Spaces.html
-  40. https://software.intel.com/sites/default/files/managed/0d/53/319433-022.pdf
+  40. https://software.intel.com/sites/default/files/managed/0d/53/319433-023.pdf
   41. https://software.intel.com/sites/default/files/managed/0d/53/319433-022.pdf
-  42. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=5.2.0
-  43. https://gcc.gnu.org/onlinedocs/
-  44. mailto:gcc-help@gcc.gnu.org
-  45. mailto:gcc@gcc.gnu.org
-  46. https://gcc.gnu.org/lists.html
-  47. http://www.fsf.org/
-  48. https://gcc.gnu.org/about.html
-  49. http://validator.w3.org/check/referer
+  42. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=5.2
+  43. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=5.3
+  44. https://gcc.gnu.org/onlinedocs/
+  45. mailto:gcc-help@gcc.gnu.org
+  46. mailto:gcc@gcc.gnu.org
+  47. https://gcc.gnu.org/lists.html
+  48. http://www.fsf.org/
+  49. https://gcc.gnu.org/about.html
+  50. http://validator.w3.org/check/referer
 ======================================================================
 http://gcc.gnu.org/gcc-4.9/index.html
 
@@ -2478,7 +2505,7 @@ GCC 4.8.5
    provided this notice is preserved.
 
    These pages are [43]maintained by the GCC team. Last modified
-   2015-06-23[44].
+   2015-11-14[44].
 
 References
 
@@ -2487,7 +2514,7 @@ References
    3. http://www.nongnu.org/avr-libc/
    4. https://gcc.gnu.org/PR54461
    5. https://gcc.gnu.org/gcc-4.8/porting_to.html
-   6. https://code.google.com/p/address-sanitizer/
+   6. https://github.com/google/sanitizers
    7. https://code.google.com/p/data-race-test/wiki/ThreadSanitizer
    8. https://lkml.org/lkml/2006/11/28/239
    9. http://gcc.gnu.org/gcc-4.8/cxx0x_status.html
@@ -3410,7 +3437,7 @@ GCC 4.7.4
    provided this notice is preserved.
 
    These pages are [55]maintained by the GCC team. Last modified
-   2014-12-06[56].
+   2015-11-14[56].
 
 References
 
@@ -3448,7 +3475,7 @@ References
   32. https://gcc.gnu.org/wiki/CoarrayLib
   33. https://gcc.gnu.org/wiki/TS29113Status
   34. https://gcc.gnu.org/onlinedocs/gcc-4.7.1/gfortran/Fortran-Dialect-Options.html#index-g_t_0040code_007bstd_003d_007d_0040var_007bstd_007d-option-53
-  35. http://weekly.golang.org/doc/go1.html
+  35. https://golang.org/doc/go1
   36. https://gcc.gnu.org/onlinedocs/gcc-4.7.1/gcc/Named-Address-Spaces.html
   37. http://nongnu.org/avr-libc/
   38. https://gcc.gnu.org/PR54461
@@ -3459,7 +3486,7 @@ References
   43. http://www.dwarfstd.org/doc/040408.1.html
   44. http://www.dwarfstd.org/ShowIssue.php?issue=110722.1
   45. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.7.1
-  46. http://weekly.golang.org/doc/go1.html
+  46. https://golang.org/doc/go1
   47. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.7.2
   48. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.7.3
   49. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.7.4
@@ -4457,7 +4484,7 @@ GCC 4.6.4
    provided this notice is preserved.
 
    These pages are [29]maintained by the GCC team. Last modified
-   2014-12-06[30].
+   2015-11-14[30].
 
 References
 
@@ -4479,7 +4506,7 @@ References
   16. https://gcc.gnu.org/wiki/OOP
   17. https://gcc.gnu.org/wiki/Coarray
   18. https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html#index-g_t_0040code_007bfcoarray_007d-233
-  19. http://golang.org/
+  19. https://golang.org/
   20. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.6.1
   21. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.6.2
   22. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.6.3
@@ -6374,10 +6401,10 @@ New Languages and Language specific improvements
 
   Fortran
 
-     * Due to the fact that the [16]GMP and [17]MPFR libraries are
-       required for all languages, Fortran is no longer special in this
-       regard and is available by default.
-     * The [18]-fexternal-blas option has been added, which generates
+     * Due to the fact that the GMP and MPFR libraries are required for
+       all languages, Fortran is no longer special in this regard and is
+       available by default.
+     * The [16]-fexternal-blas option has been added, which generates
        calls to BLAS routines for intrinsic matrix operations such as
        matmul rather than using the built-in algorithms.
      * Support to give a backtrace (compiler flag -fbacktrace or
@@ -6386,16 +6413,16 @@ New Languages and Language specific improvements
        run-time error occured.
      * GNU Fortran now defines __GFORTRAN__ when it runs the C
        preprocessor (CPP).
-     * The [19]-finit-local-zero, -finit-real, -finit-integer,
+     * The [17]-finit-local-zero, -finit-real, -finit-integer,
        -finit-character, and -finit-logical options have been added, which
        can be used to initialize local variables.
-     * The intrinsic procedures [20]GAMMA and [21]LGAMMA have been added,
+     * The intrinsic procedures [18]GAMMA and [19]LGAMMA have been added,
        which calculate the Gamma function and its logarithm. Use EXTERNAL
        gamma if you want to use your own gamma function.
      * GNU Fortran now regards the backslash character as literal (as
-       required by the Fortran 2003 standard); using [22]-fbackslash GNU
+       required by the Fortran 2003 standard); using [20]-fbackslash GNU
        Fortran interprets backslashes as C-style escape characters.
-     * The [23]interpretation of binary, octal and hexadecimal (BOZ)
+     * The [21]interpretation of binary, octal and hexadecimal (BOZ)
        literal constants has been changed. Before they were always
        interpreted as integer; now they are bit-wise transferred as
        argument of INT, REAL, DBLE and CMPLX as required by the Fortran
@@ -6765,7 +6792,7 @@ Documentation improvements
 
      * Existing libstdc++ documentation has been edited and restructured
        into a single DocBook XML manual. The results can be viewed online
-       [24]here.
+       [22]here.
 
 Other significant improvements
 
@@ -6797,7 +6824,7 @@ Other significant improvements
 
 GCC 4.3.1
 
-   This is the [25]list of problem reports (PRs) from GCC's bug tracking
+   This is the [23]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.1 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
@@ -6823,58 +6850,58 @@ Target Specific Changes
 
 GCC 4.3.2
 
-   This is the [26]list of problem reports (PRs) from GCC's bug tracking
+   This is the [24]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.2 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
 
 GCC 4.3.3
 
-   This is the [27]list of problem reports (PRs) from GCC's bug tracking
+   This is the [25]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.3 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
 
 GCC 4.3.4
 
-   This is the [28]list of problem reports (PRs) from GCC's bug tracking
+   This is the [26]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.4 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
 
 GCC 4.3.5
 
-   This is the [29]list of problem reports (PRs) from GCC's bug tracking
+   This is the [27]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.5 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
 
 GCC 4.3.6
 
-   This is the [30]list of problem reports (PRs) from GCC's bug tracking
+   This is the [28]list of problem reports (PRs) from GCC's bug tracking
    system that are known to be fixed in the 4.3.6 release. This list might
    not be complete (that is, it is possible that some PRs that have been
    fixed are not listed here).
 
 
     For questions related to the use of GCC, please consult these web
-    pages and the [31]GCC manuals. If that fails, the
-    [32]gcc-help@gcc.gnu.org mailing list might help. Comments on these
+    pages and the [29]GCC manuals. If that fails, the
+    [30]gcc-help@gcc.gnu.org mailing list might help. Comments on these
     web pages and the development of GCC are welcome on our developer
-    list at [33]gcc@gcc.gnu.org. All of [34]our lists have public
+    list at [31]gcc@gcc.gnu.org. All of [32]our lists have public
     archives.
 
-   Copyright (C) [35]Free Software Foundation, Inc. Verbatim copying and
+   Copyright (C) [33]Free Software Foundation, Inc. Verbatim copying and
    distribution of this entire article is permitted in any medium,
    provided this notice is preserved.
 
-   These pages are [36]maintained by the GCC team. Last modified
-   2014-06-28[37].
+   These pages are [34]maintained by the GCC team. Last modified
+   2015-08-27[35].
 
 References
 
    1. http://gcc.gnu.org/gcc-4.3/changes.html#4.3.5
-   2. http://gmplib.org/
+   2. https://gmplib.org/
    3. http://www.mpfr.org/
    4. https://gcc.gnu.org/install/prerequisites.html
    5. https://gcc.gnu.org/ml/gcc-announce/2001/msg00000.html
@@ -6888,28 +6915,26 @@ References
   13. http://gcc.gnu.org/gcc-4.3/cxx0x_status.html
   14. https://gcc.gnu.org/onlinedocs/libstdc++/manual/bk01pt01ch01.html#m anual.intro.status.standard.tr1
   15. https://gcc.gnu.org/onlinedocs/libstdc++/manual/parallel_mode.html
-  16. http://gmplib.org/
-  17. http://www.mpfr.org/
-  18. https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html#Code-Gen-Options
-  19. https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html#index-g_t_0040code_007bfinit-local-zero_007d-167
-  20. https://gcc.gnu.org/onlinedocs/gcc-4.3.0/gfortran/GAMMA.html
-  21. https://gcc.gnu.org/onlinedocs/gcc-4.3.0/gfortran/LGAMMA.html
-  22. https://gcc.gnu.org/onlinedocs/gfortran/Fortran-Dialect-Options.html
-  23. https://gcc.gnu.org/onlinedocs/gfortran/BOZ-literal-constants.html
-  24. https://gcc.gnu.org/onlinedocs/libstdc++/
-  25. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.1
-  26. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.2
-  27. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.3
-  28. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.4
-  29. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.5
-  30. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.6
-  31. https://gcc.gnu.org/onlinedocs/
-  32. mailto:gcc-help@gcc.gnu.org
-  33. mailto:gcc@gcc.gnu.org
-  34. https://gcc.gnu.org/lists.html
-  35. http://www.fsf.org/
-  36. https://gcc.gnu.org/about.html
-  37. http://validator.w3.org/check/referer
+  16. https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html#Code-Gen-Options
+  17. https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html#index-g_t_0040code_007bfinit-local-zero_007d-167
+  18. https://gcc.gnu.org/onlinedocs/gcc-4.3.0/gfortran/GAMMA.html
+  19. https://gcc.gnu.org/onlinedocs/gcc-4.3.0/gfortran/LGAMMA.html
+  20. https://gcc.gnu.org/onlinedocs/gfortran/Fortran-Dialect-Options.html
+  21. https://gcc.gnu.org/onlinedocs/gfortran/BOZ-literal-constants.html
+  22. https://gcc.gnu.org/onlinedocs/libstdc++/
+  23. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.1
+  24. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.2
+  25. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.3
+  26. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.4
+  27. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.5
+  28. https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=RESOLVED&resolution=FIXED&target_milestone=4.3.6
+  29. https://gcc.gnu.org/onlinedocs/
+  30. mailto:gcc-help@gcc.gnu.org
+  31. mailto:gcc@gcc.gnu.org
+  32. https://gcc.gnu.org/lists.html
+  33. http://www.fsf.org/
+  34. https://gcc.gnu.org/about.html
+  35. http://validator.w3.org/check/referer
 ======================================================================
 http://gcc.gnu.org/gcc-4.2/index.html
 
