@@ -692,6 +692,7 @@ vect_compute_data_ref_alignment (struct data_reference *dr)
   tree base, base_addr;
   tree misalign = NULL_TREE;
   tree aligned_to;
+  tree step;
   unsigned HOST_WIDE_INT alignment;
 
   if (dump_enabled_p ())
@@ -822,16 +823,20 @@ vect_compute_data_ref_alignment (struct data_reference *dr)
       DR_VECT_AUX (dr)->base_element_aligned = true;
     }
 
+  if (loop && nested_in_vect_loop_p (loop, stmt))
+    step = STMT_VINFO_DR_STEP (stmt_info);
+  else
+    step = DR_STEP (dr);
   /* If this is a backward running DR then first access in the larger
      vectype actually is N-1 elements before the address in the DR.
      Adjust misalign accordingly.  */
-  if (tree_int_cst_sgn (DR_STEP (dr)) < 0)
+  if (tree_int_cst_sgn (step) < 0)
     {
       tree offset = ssize_int (TYPE_VECTOR_SUBPARTS (vectype) - 1);
       /* DR_STEP(dr) is the same as -TYPE_SIZE of the scalar type,
 	 otherwise we wouldn't be here.  */
-      offset = fold_build2 (MULT_EXPR, ssizetype, offset, DR_STEP (dr));
-      /* PLUS because DR_STEP was negative.  */
+      offset = fold_build2 (MULT_EXPR, ssizetype, offset, step);
+      /* PLUS because STEP was negative.  */
       misalign = size_binop (PLUS_EXPR, misalign, offset);
     }
 
@@ -2751,7 +2756,7 @@ vect_analyze_data_ref_accesses (vec_info *vinfo)
 	  /* Sorting has ensured that DR_INIT (dra) <= DR_INIT (drb).  */
 	  HOST_WIDE_INT init_a = TREE_INT_CST_LOW (DR_INIT (dra));
 	  HOST_WIDE_INT init_b = TREE_INT_CST_LOW (DR_INIT (drb));
-	  gcc_assert (init_a < init_b);
+	  gcc_assert (init_a <= init_b);
 
 	  /* If init_b == init_a + the size of the type * k, we have an
 	     interleaving, and DRA is accessed before DRB.  */

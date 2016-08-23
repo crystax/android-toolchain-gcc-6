@@ -49,11 +49,6 @@ tree sizetype_tab[(int) stk_type_kind_last];
    The value is measured in bits.  */
 unsigned int maximum_field_alignment = TARGET_DEFAULT_PACK_STRUCT * BITS_PER_UNIT;
 
-/* Nonzero if all REFERENCE_TYPEs are internal and hence should be allocated
-   in the address spaces' address_mode, not pointer_mode.   Set only by
-   internal_reference_types called only by a front end.  */
-static int reference_types_internal = 0;
-
 static tree self_referential_size (tree);
 static void finalize_record_size (record_layout_info);
 static void finalize_type_size (tree);
@@ -62,15 +57,6 @@ static int excess_unit_span (HOST_WIDE_INT, HOST_WIDE_INT, HOST_WIDE_INT,
 			     HOST_WIDE_INT, tree);
 extern void debug_rli (record_layout_info);
 
-/* Show that REFERENCE_TYPES are internal and should use address_mode.
-   Called only by front end.  */
-
-void
-internal_reference_types (void)
-{
-  reference_types_internal = 1;
-}
-
 /* Given a size SIZE that may not be a constant, return a SAVE_EXPR
    to serve as the actual size-expression for a type or decl.  */
 
@@ -2161,10 +2147,8 @@ layout_type (tree type)
     case COMPLEX_TYPE:
       TYPE_UNSIGNED (type) = TYPE_UNSIGNED (TREE_TYPE (type));
       SET_TYPE_MODE (type,
-		     mode_for_size (2 * TYPE_PRECISION (TREE_TYPE (type)),
-				    (TREE_CODE (TREE_TYPE (type)) == REAL_TYPE
-				     ? MODE_COMPLEX_FLOAT : MODE_COMPLEX_INT),
-				     0));
+		     GET_MODE_COMPLEX_MODE (TYPE_MODE (TREE_TYPE (type))));
+
       TYPE_SIZE (type) = bitsize_int (GET_MODE_BITSIZE (TYPE_MODE (type)));
       TYPE_SIZE_UNIT (type) = size_int (GET_MODE_SIZE (TYPE_MODE (type)));
       break;
@@ -2245,12 +2229,6 @@ layout_type (tree type)
     case REFERENCE_TYPE:
       {
 	machine_mode mode = TYPE_MODE (type);
-	if (TREE_CODE (type) == REFERENCE_TYPE && reference_types_internal)
-	  {
-	    addr_space_t as = TYPE_ADDR_SPACE (TREE_TYPE (type));
-	    mode = targetm.addr_space.address_mode (as);
-	  }
-
 	TYPE_SIZE (type) = bitsize_int (GET_MODE_BITSIZE (mode));
 	TYPE_SIZE_UNIT (type) = size_int (GET_MODE_SIZE (mode));
 	TYPE_UNSIGNED (type) = 1;

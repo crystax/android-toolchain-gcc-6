@@ -302,7 +302,6 @@ ubsan_source_location (location_t loc)
 static unsigned short
 get_ubsan_type_info_for_type (tree type)
 {
-  gcc_assert (TYPE_SIZE (type) && tree_fits_uhwi_p (TYPE_SIZE (type)));
   if (TREE_CODE (type) == REAL_TYPE)
     return tree_to_uhwi (TYPE_SIZE (type));
   else if (INTEGRAL_TYPE_P (type))
@@ -1293,7 +1292,7 @@ instrument_si_overflow (gimple_stmt_iterator gsi)
 				      ? IFN_UBSAN_CHECK_SUB
 				      : IFN_UBSAN_CHECK_MUL, 2, a, b);
       gimple_call_set_lhs (g, lhs);
-      gsi_replace (&gsi, g, false);
+      gsi_replace (&gsi, g, true);
       break;
     case NEGATE_EXPR:
       /* Represent i = -u;
@@ -1303,7 +1302,7 @@ instrument_si_overflow (gimple_stmt_iterator gsi)
       b = gimple_assign_rhs1 (stmt);
       g = gimple_build_call_internal (IFN_UBSAN_CHECK_SUB, 2, a, b);
       gimple_call_set_lhs (g, lhs);
-      gsi_replace (&gsi, g, false);
+      gsi_replace (&gsi, g, true);
       break;
     case ABS_EXPR:
       /* Transform i = ABS_EXPR<u>;
@@ -1956,6 +1955,7 @@ pass_ubsan::execute (function *fun)
 {
   basic_block bb;
   gimple_stmt_iterator gsi;
+  unsigned int ret = 0;
 
   initialize_sanitizer_builtins ();
 
@@ -2014,8 +2014,10 @@ pass_ubsan::execute (function *fun)
 
 	  gsi_next (&gsi);
 	}
+      if (gimple_purge_dead_eh_edges (bb))
+	ret = TODO_cleanup_cfg;
     }
-  return 0;
+  return ret;
 }
 
 } // anon namespace

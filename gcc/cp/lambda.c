@@ -485,6 +485,8 @@ add_capture (tree lambda, tree id, tree orig_init, bool by_reference_p,
   else
     {
       type = lambda_capture_field_type (initializer, explicit_init_p);
+      if (type == error_mark_node)
+	return error_mark_node;
       if (by_reference_p)
 	{
 	  type = build_reference_type (type);
@@ -871,8 +873,10 @@ maybe_add_lambda_conv_op (tree type)
   bool nested = (cfun != NULL);
   bool nested_def = decl_function_context (TYPE_MAIN_DECL (type));
   tree callop = lambda_function (type);
+  tree lam = CLASSTYPE_LAMBDA_EXPR (type);
 
-  if (LAMBDA_EXPR_CAPTURE_LIST (CLASSTYPE_LAMBDA_EXPR (type)) != NULL_TREE)
+  if (LAMBDA_EXPR_CAPTURE_LIST (lam) != NULL_TREE
+      || LAMBDA_EXPR_DEFAULT_CAPTURE_MODE (lam) != CPLD_NONE)
     return;
 
   if (processing_template_decl)
@@ -901,6 +905,8 @@ maybe_add_lambda_conv_op (tree type)
   tree optype = TREE_TYPE (callop);
   tree fn_result = TREE_TYPE (optype);
 
+  tree thisarg = build_nop (TREE_TYPE (DECL_ARGUMENTS (callop)),
+			    null_pointer_node);
   if (generic_lambda_p)
     {
       /* Prepare the dependent member call for the static member function
@@ -908,7 +914,8 @@ maybe_add_lambda_conv_op (tree type)
 	 return expression for a deduced return call op to allow for simple
 	 implementation of the conversion operator.  */
 
-      tree instance = build_nop (type, null_pointer_node);
+      tree instance = cp_build_indirect_ref (thisarg, RO_NULL,
+					     tf_warning_or_error);
       tree objfn = build_min (COMPONENT_REF, NULL_TREE,
 			      instance, DECL_NAME (callop), NULL_TREE);
       int nargs = list_length (DECL_ARGUMENTS (callop)) - 1;
@@ -920,9 +927,7 @@ maybe_add_lambda_conv_op (tree type)
   else
     {
       direct_argvec = make_tree_vector ();
-      direct_argvec->quick_push (build1 (NOP_EXPR,
-					 TREE_TYPE (DECL_ARGUMENTS (callop)),
-					 null_pointer_node));
+      direct_argvec->quick_push (thisarg);
     }
 
   /* Copy CALLOP's argument list (as per 'copy_list') as FN_ARGS in order to
