@@ -111,7 +111,7 @@ complete_type (tree type)
 
   if (type == error_mark_node || COMPLETE_TYPE_P (type))
     ;
-  else if (TREE_CODE (type) == ARRAY_TYPE && TYPE_DOMAIN (type))
+  else if (TREE_CODE (type) == ARRAY_TYPE)
     {
       tree t = complete_type (TREE_TYPE (type));
       unsigned int needs_constructing, has_nontrivial_dtor;
@@ -6270,8 +6270,7 @@ build_x_conditional_expr (location_t loc, tree ifexp, tree op1, tree op2,
     }
 
   expr = build_conditional_expr (loc, ifexp, op1, op2, complain);
-  if (processing_template_decl && expr != error_mark_node
-      && TREE_CODE (expr) != VEC_COND_EXPR)
+  if (processing_template_decl && expr != error_mark_node)
     {
       tree min = build_min_non_dep (COND_EXPR, expr,
 				    orig_ifexp, orig_op1, orig_op2);

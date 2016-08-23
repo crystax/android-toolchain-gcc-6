@@ -140,6 +140,10 @@
   (and (match_code "const_int")
        (match_test "TARGET_VSX && (ival == VECTOR_ELEMENT_SCALAR_64BIT)")))
 
+(define_constraint "wE"
+  "Vector constant that can be loaded with the XXSPLTIB instruction."
+  (match_test "xxspltib_constant_nosplit (op, mode)"))
+
 ;; Extended fusion store
 (define_memory_constraint "wF"
   "Memory operand suitable for power9 fusion load/stores"
@@ -156,10 +160,34 @@
        (and (match_test "TARGET_DIRECT_MOVE_128")
 	    (match_test "(ival == VECTOR_ELEMENT_MFVSRLD_64BIT)"))))
 
+;; Generate the XXORC instruction to set a register to all 1's
+(define_constraint "wM"
+  "Match vector constant with all 1's if the XXLORC instruction is available"
+  (and (match_test "TARGET_P8_VECTOR")
+       (match_operand 0 "all_ones_constant")))
+
+;; ISA 3.0 vector d-form addresses
+(define_memory_constraint "wO"
+  "Memory operand suitable for the ISA 3.0 vector d-form instructions."
+  (match_operand 0 "vsx_quad_dform_memory_operand"))
+
 ;; Lq/stq validates the address for load/store quad
 (define_memory_constraint "wQ"
   "Memory operand suitable for the load/store quad instructions"
   (match_operand 0 "quad_memory_operand"))
+
+(define_constraint "wS"
+  "Vector constant that can be loaded with XXSPLTIB & sign extension."
+  (match_test "xxspltib_constant_split (op, mode)"))
+
+;; ISA 3.0 DS-form instruction that has the bottom 2 bits 0 and no update form.
+;; Used by LXSD/STXSD/LXSSP/STXSSP.  In contrast to "Y", the multiple-of-four
+;; offset is enforced for 32-bit too.
+(define_memory_constraint "wY"
+  "Offsettable memory operand, with bottom 2 bits 0"
+  (and (match_code "mem")
+       (not (match_test "update_address_mem (op, mode)"))
+       (match_test "mem_operand_ds_form (op, mode)")))
 
 ;; Altivec style load/store that ignores the bottom bits of the address
 (define_memory_constraint "wZ"

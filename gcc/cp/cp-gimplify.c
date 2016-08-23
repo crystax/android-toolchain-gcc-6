@@ -592,6 +592,8 @@ cp_gimplify_expr (tree *expr_p, gimple_seq *pre_p, gimple_seq *post_p)
 				  init, VEC_INIT_EXPR_VALUE_INIT (*expr_p),
 				  from_array,
 				  tf_warning_or_error);
+	hash_set<tree> pset;
+	cp_walk_tree (expr_p, cp_fold_r, &pset, NULL);
 	cp_genericize_tree (expr_p);
 	ret = GS_OK;
 	input_location = loc;
@@ -939,6 +941,17 @@ cp_fold_r (tree *stmt_p, int *walk_subtrees, void *data)
 
   *stmt_p = stmt = cp_fold (*stmt_p);
 
+  if (((hash_set<tree> *) data)->add (stmt))
+    {
+      /* Don't walk subtrees of stmts we've already walked once, otherwise
+	 we can have exponential complexity with e.g. lots of nested
+	 SAVE_EXPRs or TARGET_EXPRs.  cp_fold uses a cache and will return
+	 always the same tree, which the first time cp_fold_r has been
+	 called on it had the subtrees walked.  */
+      *walk_subtrees = 0;
+      return NULL;
+    }
+
   code = TREE_CODE (stmt);
   if (code == OMP_FOR || code == OMP_SIMD || code == OMP_DISTRIBUTE
       || code == OMP_TASKLOOP || code == CILK_FOR || code == CILK_SIMD
@@ -996,7 +1009,8 @@ cp_fold_r (tree *stmt_p, int *walk_subtrees, void *data)
 void
 cp_fold_function (tree fndecl)
 {
-  cp_walk_tree (&DECL_SAVED_TREE (fndecl), cp_fold_r, NULL, NULL);
+  hash_set<tree> pset;
+  cp_walk_tree (&DECL_SAVED_TREE (fndecl), cp_fold_r, &pset, NULL);
 }
 
 /* Perform any pre-gimplification lowering of C++ front end trees to
@@ -1266,7 +1280,15 @@ cp_genericize_r (tree *stmt_p, int *walk_subtrees, void *data)
     {
       tree d = DECL_EXPR_DECL (stmt);
       if (TREE_CODE (d) == VAR_DECL)
-	gcc_assert (CP_DECL_THREAD_LOCAL_P (d) == DECL_THREAD_LOCAL_P (d));
+	{
+	  gcc_assert (CP_DECL_THREAD_LOCAL_P (d) == DECL_THREAD_LOCAL_P (d));
+	  /* User var initializers should be genericized during containing
+	     BIND_EXPR genericization when walk_tree walks DECL_INITIAL
+	     of BIND_EXPR_VARS.  Artificial temporaries might not be
+	     mentioned there though, so walk them now.  */
+	  if (DECL_ARTIFICIAL (d) && !TREE_STATIC (d) && DECL_INITIAL (d))
+	    cp_walk_tree (&DECL_INITIAL (d), cp_genericize_r, data, NULL);
+	}
     }
   else if (TREE_CODE (stmt) == OMP_PARALLEL
 	   || TREE_CODE (stmt) == OMP_TASK
@@ -1547,6 +1569,13 @@ cp_genericize (tree fndecl)
   if (DECL_CLONED_FUNCTION_P (fndecl))
     return;
 
+  /* Allow cp_genericize calls to be nested.  */
+  tree save_bc_label[2];
+  save_bc_label[bc_break] = bc_label[bc_break];
+  save_bc_label[bc_continue] = bc_label[bc_continue];
+  bc_label[bc_break] = NULL_TREE;
+  bc_label[bc_continue] = NULL_TREE;
+
   /* Expand all the array notations here.  */
   if (flag_cilkplus 
       && contains_array_notation_expr (DECL_SAVED_TREE (fndecl)))
@@ -1566,6 +1595,8 @@ cp_genericize (tree fndecl)
 
   gcc_assert (bc_label[bc_break] == NULL);
   gcc_assert (bc_label[bc_continue] == NULL);
+  bc_label[bc_break] = save_bc_label[bc_break];
+  bc_label[bc_continue] = save_bc_label[bc_continue];
 }
 
 /* Build code to apply FN to each member of ARG1 and ARG2.  FN may be
@@ -1877,13 +1908,21 @@ cp_fully_fold (tree x)
 static tree
 cp_fold_maybe_rvalue (tree x, bool rval)
 {
-  if (rval && DECL_P (x))
+  while (true)
     {
-      tree v = decl_constant_value (x);
-      if (v != error_mark_node)
-	x = v;
+      x = cp_fold (x);
+      if (rval && DECL_P (x))
+	{
+	  tree v = decl_constant_value (x);
+	  if (v != x && v != error_mark_node)
+	    {
+	      x = v;
+	      continue;
+	    }
+	}
+      break;
     }
-  return cp_fold (x);
+  return x;
 }
 
 /* Fold expression X which is used as an rvalue.  */
@@ -1995,6 +2034,15 @@ cp_fold (tree x)
 
       break;
 
+    case INDIRECT_REF:
+      /* We don't need the decltype(auto) obfuscation anymore.  */
+      if (REF_PARENTHESIZED_P (x))
+	{
+	  tree p = maybe_undo_parenthesized_ref (x);
+	  return cp_fold (p);
+	}
+      goto unary;
+
     case ADDR_EXPR:
     case REALPART_EXPR:
     case IMAGPART_EXPR:
@@ -2007,7 +2055,7 @@ cp_fold (tree x)
     case BIT_NOT_EXPR:
     case TRUTH_NOT_EXPR:
     case FIXED_CONVERT_EXPR:
-    case INDIRECT_REF:
+    unary:
 
       loc = EXPR_LOCATION (x);
       op0 = cp_fold_maybe_rvalue (TREE_OPERAND (x, 0), rval_ops);
@@ -2017,7 +2065,16 @@ cp_fold (tree x)
 	  if (op0 == error_mark_node)
 	    x = error_mark_node;
 	  else
-	    x = fold_build1_loc (loc, code, TREE_TYPE (x), op0);
+	    {
+	      x = fold_build1_loc (loc, code, TREE_TYPE (x), op0);
+	      if (code == INDIRECT_REF
+		  && (INDIRECT_REF_P (x) || TREE_CODE (x) == MEM_REF))
+		{
+		  TREE_READONLY (x) = TREE_READONLY (org_x);
+		  TREE_SIDE_EFFECTS (x) = TREE_SIDE_EFFECTS (org_x);
+		  TREE_THIS_VOLATILE (x) = TREE_THIS_VOLATILE (org_x);
+		}
+	    }
 	}
       else
 	x = fold (x);
@@ -2294,7 +2351,12 @@ cp_fold (tree x)
 	      || op3 == error_mark_node)
 	    x = error_mark_node;
 	  else
-	    x = build4_loc (loc, code, TREE_TYPE (x), op0, op1, op2, op3);
+	    {
+	      x = build4_loc (loc, code, TREE_TYPE (x), op0, op1, op2, op3);
+	      TREE_READONLY (x) = TREE_READONLY (org_x);
+	      TREE_SIDE_EFFECTS (x) = TREE_SIDE_EFFECTS (org_x);
+	      TREE_THIS_VOLATILE (x) = TREE_THIS_VOLATILE (org_x);
+	    }
 	}
 
       x = fold (x);

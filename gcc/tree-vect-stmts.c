@@ -1256,10 +1256,11 @@ vect_init_vector (gimple *stmt, tree val, tree type, gimple_stmt_iterator *gsi)
   gimple *init_stmt;
   tree new_temp;
 
-  if (TREE_CODE (type) == VECTOR_TYPE
-      && TREE_CODE (TREE_TYPE (val)) != VECTOR_TYPE)
+  /* We abuse this function to push sth to a SSA name with initial 'val'.  */
+  if (! useless_type_conversion_p (type, TREE_TYPE (val)))
     {
-      if (!types_compatible_p (TREE_TYPE (type), TREE_TYPE (val)))
+      gcc_assert (TREE_CODE (type) == VECTOR_TYPE);
+      if (! types_compatible_p (TREE_TYPE (type), TREE_TYPE (val)))
 	{
 	  /* Scalar boolean value should be transformed into
 	     all zeros or all ones value before building a vector.  */
@@ -1284,7 +1285,13 @@ vect_init_vector (gimple *stmt, tree val, tree type, gimple_stmt_iterator *gsi)
 	  else
 	    {
 	      new_temp = make_ssa_name (TREE_TYPE (type));
-	      init_stmt = gimple_build_assign (new_temp, NOP_EXPR, val);
+	      if (! INTEGRAL_TYPE_P (TREE_TYPE (val)))
+		init_stmt = gimple_build_assign (new_temp,
+						 fold_build1 (VIEW_CONVERT_EXPR,
+							      TREE_TYPE (type),
+							      val));
+	      else
+		init_stmt = gimple_build_assign (new_temp, NOP_EXPR, val);
 	      vect_init_vector_1 (stmt, init_stmt, gsi);
 	      val = new_temp;
 	    }
@@ -3022,8 +3029,10 @@ vectorizable_simd_clone_call (gimple *stmt, gimple_stmt_iterator *gsi,
     {
       STMT_VINFO_SIMD_CLONE_INFO (stmt_info).safe_push (bestn->decl);
       for (i = 0; i < nargs; i++)
-	if (bestn->simdclone->args[i].arg_type
-	    == SIMD_CLONE_ARG_TYPE_LINEAR_CONSTANT_STEP)
+	if ((bestn->simdclone->args[i].arg_type
+	     == SIMD_CLONE_ARG_TYPE_LINEAR_CONSTANT_STEP)
+	    || (bestn->simdclone->args[i].arg_type
+		== SIMD_CLONE_ARG_TYPE_LINEAR_REF_CONSTANT_STEP))
 	  {
 	    STMT_VINFO_SIMD_CLONE_INFO (stmt_info).safe_grow_cleared (i * 3
 									+ 1);
@@ -3159,6 +3168,7 @@ vectorizable_simd_clone_call (gimple *stmt, gimple_stmt_iterator *gsi,
 	      vargs.safe_push (op);
 	      break;
 	    case SIMD_CLONE_ARG_TYPE_LINEAR_CONSTANT_STEP:
+	    case SIMD_CLONE_ARG_TYPE_LINEAR_REF_CONSTANT_STEP:
 	      if (j == 0)
 		{
 		  gimple_seq stmts;
@@ -3222,6 +3232,8 @@ vectorizable_simd_clone_call (gimple *stmt, gimple_stmt_iterator *gsi,
 		  vargs.safe_push (new_temp);
 		}
 	      break;
+	    case SIMD_CLONE_ARG_TYPE_LINEAR_VAL_CONSTANT_STEP:
+	    case SIMD_CLONE_ARG_TYPE_LINEAR_UVAL_CONSTANT_STEP:
 	    case SIMD_CLONE_ARG_TYPE_LINEAR_VARIABLE_STEP:
 	    case SIMD_CLONE_ARG_TYPE_LINEAR_REF_VARIABLE_STEP:
 	    case SIMD_CLONE_ARG_TYPE_LINEAR_VAL_VARIABLE_STEP:
@@ -5074,11 +5086,8 @@ vectorizable_operation (gimple *stmt, gimple_stmt_iterator *gsi,
 	    vect_get_vec_defs (op0, NULL_TREE, stmt, &vec_oprnds0, NULL,
 			       slp_node, -1);
 	  if (op_type == ternary_op)
-	    {
-	      vec_oprnds2.create (1);
-	      vec_oprnds2.quick_push (vect_get_vec_def_for_operand (op2,
-		                                                    stmt));
-	    }
+	    vect_get_vec_defs (op2, NULL_TREE, stmt, &vec_oprnds2, NULL,
+			       slp_node, -1);
 	}
       else
 	{

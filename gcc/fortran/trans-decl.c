@@ -732,6 +732,7 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
       st = NULL;
       s = NULL;
 
+      /* Check for a symbol with the same name. */
       if (gsym)
 	gfc_find_symbol (sym->name, gsym->ns, 0, &s);
 
@@ -748,22 +749,37 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
 	  st->n.sym = sym;
 	  sym->refs++;
 	}
-      else if (sym->attr.flavor == FL_DERIVED)
+      else if (gfc_fl_struct (sym->attr.flavor))
 	{
 	  if (s && s->attr.flavor == FL_PROCEDURE)
 	    {
 	      gfc_interface *intr;
 	      gcc_assert (s->attr.generic);
 	      for (intr = s->generic; intr; intr = intr->next)
-		if (intr->sym->attr.flavor == FL_DERIVED)
+		if (gfc_fl_struct (intr->sym->attr.flavor))
 		  {
 		    s = intr->sym;
 		    break;
 		  }
     	    }
 
-	  if (!s->backend_decl)
-	    s->backend_decl = gfc_get_derived_type (s);
+          /* Normally we can assume that s is a derived-type symbol since it
+             shares a name with the derived-type sym. However if sym is a
+             STRUCTURE, it may in fact share a name with any other basic type
+             variable. If s is in fact of derived type then we can continue
+             looking for a duplicate type declaration.  */
+          if (sym->attr.flavor == FL_STRUCT && s->ts.type == BT_DERIVED)
+            {
+              s = s->ts.u.derived;
+            }
+
+	  if (gfc_fl_struct (s->attr.flavor) && !s->backend_decl)
+            {
+              if (s->attr.flavor == FL_UNION)
+                s->backend_decl = gfc_get_union_type (s);
+              else
+                s->backend_decl = gfc_get_derived_type (s);
+            }
 	  gfc_copy_dt_decls_ifequal (s, sym, true);
 	  return true;
 	}
@@ -1623,26 +1639,23 @@ gfc_get_symbol_decl (gfc_symbol * sym)
 	  && !(sym->attr.use_assoc && !intrinsic_array_parameter)))
     gfc_defer_symbol_init (sym);
 
+  /* Associate names can use the hidden string length variable
+     of their associated target.  */
+  if (sym->ts.type == BT_CHARACTER
+      && TREE_CODE (length) != INTEGER_CST)
+    {
+      gfc_finish_var_decl (length, sym);
+      gcc_assert (!sym->value);
+    }
+
   gfc_finish_var_decl (decl, sym);
 
   if (sym->ts.type == BT_CHARACTER)
-    {
-      /* Character variables need special handling.  */
-      gfc_allocate_lang_decl (decl);
-
-      /* Associate names can use the hidden string length variable
-	 of their associated target.  */
-      if (TREE_CODE (length) != INTEGER_CST)
-	{
-	  gfc_finish_var_decl (length, sym);
-	  gcc_assert (!sym->value);
-	}
-    }
+    /* Character variables need special handling.  */
+    gfc_allocate_lang_decl (decl);
   else if (sym->attr.subref_array_pointer)
-    {
-      /* We need the span for these beasts.  */
-      gfc_allocate_lang_decl (decl);
-    }
+    /* We need the span for these beasts.  */
+    gfc_allocate_lang_decl (decl);
 
   if (sym->attr.subref_array_pointer)
     {
@@ -2384,7 +2397,7 @@ create_function_arglist (gfc_symbol * sym)
 	 Thus, we will use a hidden argument in that case.  */
       else if (f->sym->attr.optional && f->sym->attr.value
 	       && !f->sym->attr.dimension && f->sym->ts.type != BT_CLASS
-	       && f->sym->ts.type != BT_DERIVED)
+	       && !gfc_bt_struct (f->sym->ts.type))
 	{
           tree tmp;
           strcpy (&name[1], f->sym->name);
@@ -4034,6 +4047,8 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
       else if (proc_sym->as)
 	{
 	  tree result = TREE_VALUE (current_fake_result_decl);
+	  gfc_save_backend_locus (&loc);
+	  gfc_set_backend_locus (&proc_sym->declared_at);
 	  gfc_trans_dummy_array_bias (proc_sym, result, block);
 
 	  /* An automatic character length, pointer array result.  */
@@ -4043,8 +4058,6 @@ gfc_trans_deferred_vars (gfc_symbol * proc_sym, gfc_wrapped_block * block)
 	      tmp = NULL;
 	      if (proc_sym->ts.deferred)
 		{
-		  gfc_save_backend_locus (&loc);
-		  gfc_set_backend_locus (&proc_sym->declared_at);
 		  gfc_start_block (&init);
 		  tmp = gfc_null_and_pass_deferred_len (proc_sym, &init, &loc);
 		  gfc_add_init_cleanup (block, gfc_finish_block (&init), tmp);
@@ -4596,7 +4609,7 @@ gfc_create_module_variable (gfc_symbol * sym)
       && sym->ts.type == BT_DERIVED)
     sym->backend_decl = gfc_typenode_for_spec (&(sym->ts));
 
-  if (sym->attr.flavor == FL_DERIVED
+  if (gfc_fl_struct (sym->attr.flavor)
       && sym->backend_decl
       && TREE_CODE (sym->backend_decl) == RECORD_TYPE)
     {
@@ -4839,7 +4852,7 @@ check_constant_initializer (gfc_expr *expr, gfc_typespec *ts, bool array,
     }
   else switch (ts->type)
     {
-    case BT_DERIVED:
+    case_bt_struct:
       if (expr->expr_type != EXPR_STRUCTURE)
 	return false;
       cm = expr->ts.u.derived->components;
@@ -6260,7 +6273,7 @@ gfc_generate_function_code (gfc_namespace * ns)
 			gfc_finish_block (&cleanup));
 
   /* Add all the decls we created during processing.  */
-  decl = saved_function_decls;
+  decl = nreverse (saved_function_decls);
   while (decl)
     {
       tree next;
@@ -6319,7 +6332,7 @@ gfc_generate_function_code (gfc_namespace * ns)
 	 function has already called cgraph_create_node, which also created
 	 the cgraph node for this function.  */
       if (!has_coarray_vars || flag_coarray != GFC_FCOARRAY_LIB)
-	(void) cgraph_node::create (fndecl);
+	(void) cgraph_node::get_create (fndecl);
     }
   else
     cgraph_node::finalize_function (fndecl, true);
@@ -6452,7 +6465,7 @@ gfc_process_block_locals (gfc_namespace* ns)
   if (flag_coarray == GFC_FCOARRAY_LIB && has_coarray_vars)
     generate_coarray_init (ns);
 
-  decl = saved_local_decls;
+  decl = nreverse (saved_local_decls);
   while (decl)
     {
       tree next;

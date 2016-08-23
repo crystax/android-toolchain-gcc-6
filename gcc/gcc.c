@@ -5387,8 +5387,9 @@ do_spec_1 (const char *spec, int inswitch, const char *soft_matched_part)
 			if (files_differ)
 #endif
 			  {
-			    temp_filename = save_string (temp_filename,
-							 temp_filename_length + 1);
+			    temp_filename
+			      = save_string (temp_filename,
+					     temp_filename_length - 1);
 			    obstack_grow (&obstack, temp_filename,
 						    temp_filename_length);
 			    arg_going = 1;
@@ -7667,12 +7668,14 @@ driver::build_option_suggestions (void)
 	      for (unsigned j = 0; e->values[j].arg != NULL; j++)
 		{
 		  char *with_arg = concat (opt_text, e->values[j].arg, NULL);
-		  add_misspelling_candidates (m_option_suggestions, with_arg);
+		  add_misspelling_candidates (m_option_suggestions, option,
+					      with_arg);
 		  free (with_arg);
 		}
 	    }
 	  else
-	    add_misspelling_candidates (m_option_suggestions, opt_text);
+	    add_misspelling_candidates (m_option_suggestions, option,
+					opt_text);
 	  break;
 
 	case OPT_fsanitize_:
@@ -7696,7 +7699,8 @@ driver::build_option_suggestions (void)
 		/* Add with_arg and all of its variant spellings e.g.
 		   "-fno-sanitize=address" to candidates (albeit without
 		   leading dashes).  */
-		add_misspelling_candidates (m_option_suggestions, with_arg);
+		add_misspelling_candidates (m_option_suggestions, option,
+					    with_arg);
 		free (with_arg);
 	      }
 	  }

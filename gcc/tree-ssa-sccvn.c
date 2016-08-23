@@ -1217,6 +1217,18 @@ vn_reference_maybe_forwprop_address (vec<vn_reference_op_s> *ops,
 	{
 	  auto_vec<vn_reference_op_s, 32> tem;
 	  copy_reference_ops_from_ref (TREE_OPERAND (addr, 0), &tem);
+	  /* Make sure to preserve TBAA info.  The only objects not
+	     wrapped in MEM_REFs that can have their address taken are
+	     STRING_CSTs.  */
+	  if (tem.length () >= 2
+	      && tem[tem.length () - 2].opcode == MEM_REF)
+	    {
+	      vn_reference_op_t new_mem_op = &tem[tem.length () - 2];
+	      new_mem_op->op0 = fold_convert (TREE_TYPE (mem_op->op0),
+					      new_mem_op->op0);
+	    }
+	  else
+	    gcc_assert (tem.last ().opcode == STRING_CST);
 	  ops->pop ();
 	  ops->pop ();
 	  ops->safe_splice (tem);
@@ -1976,11 +1988,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
       /* We need to pre-pend vr->operands[0..i] to rhs.  */
       vec<vn_reference_op_s> old = vr->operands;
       if (i + 1 + rhs.length () > vr->operands.length ())
-	{
-	  vr->operands.safe_grow (i + 1 + rhs.length ());
-	  if (old == shared_lookup_references)
-	    shared_lookup_references = vr->operands;
-	}
+	vr->operands.safe_grow (i + 1 + rhs.length ());
       else
 	vr->operands.truncate (i + 1 + rhs.length ());
       FOR_EACH_VEC_ELT (rhs, j, vro)
@@ -2131,8 +2139,7 @@ vn_reference_lookup_3 (ao_ref *ref, tree vuse, void *vr_,
 	{
 	  vec<vn_reference_op_s> old = vr->operands;
 	  vr->operands.safe_grow_cleared (2);
-	  if (old == shared_lookup_references
-	      && vr->operands != old)
+	  if (old == shared_lookup_references)
 	    shared_lookup_references = vr->operands;
 	}
       else

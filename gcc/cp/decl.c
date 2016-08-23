@@ -2090,6 +2090,14 @@ duplicate_decls (tree newdecl, tree olddecl, bool newdecl_is_friend)
       if (VAR_P (newdecl))
 	{
 	  DECL_THIS_EXTERN (newdecl) |= DECL_THIS_EXTERN (olddecl);
+	  /* For already initialized vars, TREE_READONLY could have been
+	     cleared in cp_finish_decl, because the var needs runtime
+	     initialization or destruction.  Make sure not to set
+	     TREE_READONLY on it again.  */
+	  if (DECL_INITIALIZED_P (olddecl)
+	      && !DECL_EXTERNAL (olddecl)
+	      && !TREE_READONLY (olddecl))
+	    TREE_READONLY (newdecl) = 0;
 	  DECL_INITIALIZED_P (newdecl) |= DECL_INITIALIZED_P (olddecl);
 	  DECL_NONTRIVIALLY_INITIALIZED_P (newdecl)
 	    |= DECL_NONTRIVIALLY_INITIALIZED_P (olddecl);
@@ -5329,10 +5337,7 @@ layout_var_decl (tree decl)
     complete_type (type);
   if (!DECL_SIZE (decl)
       && TREE_TYPE (decl) != error_mark_node
-      && (COMPLETE_TYPE_P (type)
-	  || (TREE_CODE (type) == ARRAY_TYPE
-	      && !TYPE_DOMAIN (type)
-	      && COMPLETE_TYPE_P (TREE_TYPE (type)))))
+      && complete_or_array_type_p (type))
     layout_decl (decl, 0);
 
   if (!DECL_EXTERNAL (decl) && DECL_SIZE (decl) == NULL_TREE)
@@ -5892,8 +5897,10 @@ reshape_init_r (tree type, reshape_iter *d, bool first_initializer_p,
 	    }
 	}
 
-      warning (OPT_Wmissing_braces, "missing braces around initializer for %qT",
-	       type);
+      if (complain & tf_warning)
+	warning (OPT_Wmissing_braces,
+		 "missing braces around initializer for %qT",
+		 type);
     }
 
   /* Dispatch to specialized routines.  */
@@ -6633,6 +6640,13 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
                                                    adc_variable_type);
       if (type == error_mark_node)
 	return;
+      if (TREE_CODE (type) == FUNCTION_TYPE)
+	{
+	  error ("initializer for %<decltype(auto) %D%> has function type "
+		 "(did you forget the %<()%> ?)", decl);
+	  TREE_TYPE (decl) = error_mark_node;
+	  return;
+	}
       cp_apply_type_quals_to_decl (cp_type_quals (type), decl);
     }
 
@@ -7905,7 +7919,7 @@ grokfndecl (tree ctype,
 
       /* Adjust the required expression into a constraint. */
       if (decl_reqs)
-        decl_reqs = make_predicate_constraint (decl_reqs);
+        decl_reqs = normalize_expression (decl_reqs);
 
       tree ci = build_constraints (tmpl_reqs, decl_reqs);
       set_constraints (decl, ci);
@@ -11186,8 +11200,7 @@ grokdeclarator (const cp_declarator *declarator,
 	  }
 	else if (!staticp && !dependent_type_p (type)
 		 && !COMPLETE_TYPE_P (complete_type (type))
-		 && (TREE_CODE (type) != ARRAY_TYPE
-		     || !COMPLETE_TYPE_P (TREE_TYPE (type))
+		 && (!complete_or_array_type_p (type)
 		     || initialized == 0))
 	  {
 	    if (TREE_CODE (type) != ARRAY_TYPE
@@ -13382,6 +13395,19 @@ finish_enum_value_list (tree enumtype)
       use_short_enum = flag_short_enums
         || lookup_attribute ("packed", TYPE_ATTRIBUTES (enumtype));
 
+      /* If the precision of the type was specified with an attribute and it
+	 was too small, give an error.  Otherwise, use it.  */
+      if (TYPE_PRECISION (enumtype))
+	{
+	  if (precision > TYPE_PRECISION (enumtype))
+	    error ("specified mode too small for enumeral values");
+	  else
+	    {
+	      use_short_enum = true;
+	      precision = TYPE_PRECISION (enumtype);
+	    }
+	}
+
       for (itk = (use_short_enum ? itk_char : itk_int);
            itk != itk_none;
            itk++)
@@ -14999,8 +15025,9 @@ complete_vars (tree type)
 	  tree var = iv->decl;
 	  tree type = TREE_TYPE (var);
 
-	  if (TYPE_MAIN_VARIANT (strip_array_types (type))
-	      == iv->incomplete_type)
+	  if (type != error_mark_node
+	      && (TYPE_MAIN_VARIANT (strip_array_types (type))
+		  == iv->incomplete_type))
 	    {
 	      /* Complete the type of the variable.  The VAR_DECL itself
 		 will be laid out in expand_expr.  */

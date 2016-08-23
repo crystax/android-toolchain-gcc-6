@@ -1,3 +1,66 @@
+2016-08-22  Release Manager
+
+	* GCC 6.2.0 released.
+
+2016-08-12  Jakub Jelinek  <jakub@redhat.com>
+	    Martin Liska  <mliska@suse.cz>
+
+	PR c/67410
+	* c-typeck.c (set_nonincremental_init_from_string): Use / instead of
+	% to determine val element to change.  Assert that
+	wchar_bytes * charwidth fits into val array.
+
+2016-08-11  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from mainline
+	2016-08-11  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/72816
+	* c-decl.c (grokdeclarator): When adding TYPE_DOMAIN for flexible
+	array member through typedef, for orig_qual_indirect == 0 clear
+	orig_qual_type.
+
+2016-07-02  Jakub Jelinek  <jakub@redhat.com>
+
+	Backported from mainline
+	2016-06-29  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c/71685
+	* c-typeck.c (c_build_qualified_type): Don't clear
+	C_TYPE_INCOMPLETE_VARS for the main variant.
+
+2016-06-10  Thomas Schwinge  <thomas@codesourcery.com>
+
+	PR c/71381
+	Backport from trunk r237290:
+	* c-parser.c (c_parser_omp_variable_list) <OMP_CLAUSE__CACHE_>:
+	Loosen checking.
+
+2016-05-30  Jakub Jelinek  <jakub@redhat.com>
+
+	PR c++/71349
+	* c-parser.c (c_parser_omp_for): Don't disallow nowait clause
+	when combined with target construct.
+
+2016-05-19  David Malcolm  <dmalcolm@redhat.com>
+
+	Backport from trunk r236488.
+	PR c/71171
+	* c-parser.c (c_parser_generic_selection): Use c_expr::set_error
+	in error-handling.
+	(c_parser_postfix_expression): Likewise.
+	* c-tree.h (c_expr::set_error): New method.
+	* c-typeck.c (parser_build_binary_op): In error-handling, ensure
+	that result's range is initialized.
+
+2016-04-29  Cesar Philippidis  <cesar@codesourcery.com>
+
+	PR middle-end/70626
+	* c-parser.c (c_parser_oacc_loop): Don't augment mask with
+	OACC_LOOP_CLAUSE_MASK.
+	(c_parser_oacc_kernels_parallel): Update call to
+	c_oacc_split_loop_clauses.
+
 2016-04-27  Release Manager
 
 	* GCC 6.1.0 released.

@@ -4639,12 +4639,11 @@ find_func_aliases_for_call (struct function *fn, gcall *t)
 	  auto_vec<ce_s, 2> lhsc;
 	  struct constraint_expr rhs;
 	  struct constraint_expr *lhsp;
+	  bool aggr_p = aggregate_value_p (lhsop, gimple_call_fntype (t));
 
 	  get_constraint_for (lhsop, &lhsc);
 	  rhs = get_function_part_constraint (fi, fi_result);
-	  if (fndecl
-	      && DECL_RESULT (fndecl)
-	      && DECL_BY_REFERENCE (DECL_RESULT (fndecl)))
+	  if (aggr_p)
 	    {
 	      auto_vec<ce_s, 2> tem;
 	      tem.quick_push (rhs);
@@ -4654,22 +4653,19 @@ find_func_aliases_for_call (struct function *fn, gcall *t)
 	    }
 	  FOR_EACH_VEC_ELT (lhsc, j, lhsp)
 	    process_constraint (new_constraint (*lhsp, rhs));
-	}
 
-      /* If we pass the result decl by reference, honor that.  */
-      if (lhsop
-	  && fndecl
-	  && DECL_RESULT (fndecl)
-	  && DECL_BY_REFERENCE (DECL_RESULT (fndecl)))
-	{
-	  struct constraint_expr lhs;
-	  struct constraint_expr *rhsp;
+	  /* If we pass the result decl by reference, honor that.  */
+	  if (aggr_p)
+	    {
+	      struct constraint_expr lhs;
+	      struct constraint_expr *rhsp;
 
-	  get_constraint_for_address_of (lhsop, &rhsc);
-	  lhs = get_function_part_constraint (fi, fi_result);
-	  FOR_EACH_VEC_ELT (rhsc, j, rhsp)
-	    process_constraint (new_constraint (lhs, *rhsp));
-	  rhsc.truncate (0);
+	      get_constraint_for_address_of (lhsop, &rhsc);
+	      lhs = get_function_part_constraint (fi, fi_result);
+	      FOR_EACH_VEC_ELT (rhsc, j, rhsp)
+		  process_constraint (new_constraint (lhs, *rhsp));
+	      rhsc.truncate (0);
+	    }
 	}
 
       /* If we use a static chain, pass it along.  */
@@ -7486,13 +7482,36 @@ struct pt_solution ipa_escaped_pt
   = { true, false, false, false, false, false, false, false, NULL };
 
 /* Associate node with varinfo DATA. Worker for
-   cgraph_for_node_and_aliases.  */
+   cgraph_for_symbol_thunks_and_aliases.  */
 static bool
 associate_varinfo_to_alias (struct cgraph_node *node, void *data)
 {
   if ((node->alias || node->thunk.thunk_p)
       && node->analyzed)
     insert_vi_for_tree (node->decl, (varinfo_t)data);
+  return false;
+}
+
+/* Compute whether node is refered to non-locally.  Worker for
+   cgraph_for_symbol_thunks_and_aliases.  */
+static bool
+refered_from_nonlocal_fn (struct cgraph_node *node, void *data)
+{
+  bool *nonlocal_p = (bool *)data;
+  *nonlocal_p |= (node->used_from_other_partition
+		  || node->externally_visible
+		  || node->force_output);
+  return false;
+}
+
+/* Same for varpool nodes.  */
+static bool
+refered_from_nonlocal_var (struct varpool_node *node, void *data)
+{
+  bool *nonlocal_p = (bool *)data;
+  *nonlocal_p |= (node->used_from_other_partition
+		  || node->externally_visible
+		  || node->force_output);
   return false;
 }
 
@@ -7559,6 +7578,8 @@ ipa_pta_execute (void)
 			 || node->externally_visible
 			 || node->force_output
 			 || node_address_taken);
+      node->call_for_symbol_thunks_and_aliases (refered_from_nonlocal_fn,
+						&nonlocal_p, true);
 
       vi = create_function_info_for (node->decl,
 				     alias_get_name (node->decl), false,
@@ -7596,6 +7617,8 @@ ipa_pta_execute (void)
       bool nonlocal_p = (var->used_from_other_partition
 			 || var->externally_visible
 			 || var->force_output);
+      var->call_for_symbol_and_aliases (refered_from_nonlocal_var,
+					&nonlocal_p, true);
       if (nonlocal_p)
 	vi->is_ipa_escape_point = true;
     }
