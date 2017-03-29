@@ -18,6 +18,7 @@
 
 .deps
 .libs
+.tramp_history
 
 autom4te.cache
 config.cache
