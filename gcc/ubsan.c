@@ -1,5 +1,5 @@
 /* UndefinedBehaviorSanitizer, undefined behavior detector.
-   Copyright (C) 2013-2016 Free Software Foundation, Inc.
+   Copyright (C) 2013-2017 Free Software Foundation, Inc.
    Contributed by Marek Polacek <polacek@redhat.com>
 
 This file is part of GCC.
@@ -583,7 +583,7 @@ ubsan_create_data (const char *name, int loccnt, const location_t *ploc, ...)
     {
       location_t loc = LOCATION_LOCUS (ploc[j]);
       CONSTRUCTOR_APPEND_ELT (v, NULL_TREE, ubsan_source_location (loc));
-    } 
+    }
 
   size_t nelts = vec_safe_length (saved_args);
   for (i = 0; i < nelts; i++)
@@ -1469,7 +1469,7 @@ ubsan_use_new_style_p (location_t loc)
 
   expanded_location xloc = expand_location (loc);
   if (xloc.file == NULL || strncmp (xloc.file, "\1", 2) == 0
-      || xloc.file == '\0' || xloc.file[0] == '\xff'
+      || xloc.file[0] == '\0' || xloc.file[0] == '\xff'
       || xloc.file[1] == '\xff')
     return false;
 
